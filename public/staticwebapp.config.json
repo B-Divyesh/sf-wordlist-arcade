@@ -1,7 +1,7 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "*.css", "*.js", "*.svg", "*.webp", "*.jpg", "*.webmanifest"]
+    "exclude": ["/assets/*", "*.css", "*.js", "*.svg", "*.webp", "*.jpg", "*.webmanifest", "*.txt", "*.xml"]
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

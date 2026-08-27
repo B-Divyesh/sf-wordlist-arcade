@@ -19,6 +19,18 @@ const app: HTMLDivElement = appRoot;
 let currentList: SharedList = { title: 'My vocabulary', pairs: [] };
 let currentGame: GameId | null = null;
 
+function readLocal(key: string): string {
+  try { return localStorage.getItem(key) || ''; } catch { return ''; }
+}
+
+function writeLocal(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* The game still works when browser storage is unavailable. */ }
+}
+
+function removeLocal(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* Nothing to clear. */ }
+}
+
 const esc = (value: string) => value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char));
 const get = <T extends HTMLElement>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -52,8 +64,8 @@ function footer(): string {
 
 function renderHome(prefill?: SharedList, notice = ''): void {
   currentGame = null;
-  const stored = localStorage.getItem('wordlist-arcade-draft') || '';
-  const storedTitle = localStorage.getItem('wordlist-arcade-title') || 'My vocabulary';
+  const stored = readLocal('wordlist-arcade-draft');
+  const storedTitle = readLocal('wordlist-arcade-title') || 'My vocabulary';
   const list = prefill || { ...currentList, title: currentList.pairs.length ? currentList.title : storedTitle };
   const initialText = prefill ? list.pairs.map(pair => `${pair.term} — ${pair.definition}`).join('\n') : stored;
   app.innerHTML = `${header()}
@@ -97,11 +109,9 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   textArea.addEventListener('input', update);
   get<HTMLButtonElement>('#try-example').addEventListener('click', () => { textArea.value = EXAMPLE; update(); location.hash = 'make'; textArea.focus(); });
   get<HTMLButtonElement>('#load-example').addEventListener('click', () => { textArea.value = EXAMPLE; update(); textArea.focus(); });
-  get<HTMLButtonElement>('#clear-draft').addEventListener('click', () => { textArea.value = ''; titleInput.value = 'My vocabulary'; localStorage.removeItem('wordlist-arcade-draft'); localStorage.removeItem('wordlist-arcade-title'); update(); textArea.focus(); });
+  get<HTMLButtonElement>('#clear-draft').addEventListener('click', () => { textArea.value = ''; titleInput.value = 'My vocabulary'; removeLocal('wordlist-arcade-draft'); removeLocal('wordlist-arcade-title'); update(); textArea.focus(); });
   get<HTMLButtonElement>('#copy-list').addEventListener('click', () => copyLink('match'));
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game as GameId)));
-  window.addEventListener('online', updateOnlineStatus, { once: true });
-  window.addEventListener('offline', updateOnlineStatus, { once: true });
   updateMaker(titleInput.value, textArea.value);
   updateOnlineStatus();
   if (notice) showToast(notice);
@@ -110,8 +120,8 @@ function renderHome(prefill?: SharedList, notice = ''): void {
 function updateMaker(title: string, raw: string): void {
   const result = parsePairs(raw);
   currentList = { title: title.trim() || 'My vocabulary', pairs: result.pairs };
-  localStorage.setItem('wordlist-arcade-draft', raw);
-  localStorage.setItem('wordlist-arcade-title', currentList.title);
+  writeLocal('wordlist-arcade-draft', raw);
+  writeLocal('wordlist-arcade-title', currentList.title);
   const status = get<HTMLElement>('#parse-status');
   const count = get<HTMLElement>('#pair-count');
   count.textContent = `${result.pairs.length} ${result.pairs.length === 1 ? 'pair' : 'pairs'}`;
@@ -130,9 +140,9 @@ function updateMaker(title: string, raw: string): void {
   get<HTMLButtonElement>('#copy-list').disabled = !enabled;
 }
 
-function updateOnlineStatus(): void {
+function updateOnlineStatus(online = navigator.onLine): void {
   const banner = document.querySelector<HTMLElement>('#offline-banner');
-  if (banner) banner.hidden = navigator.onLine;
+  if (banner) banner.hidden = online;
 }
 
 function gameUrl(game: GameId): string {
@@ -308,11 +318,11 @@ function playReveal(): void {
   const draw = (message = '', kind = '') => {
     const pair = queue[index];
     const upper = pair.term.toLocaleUpperCase();
-    const letters = new Set(Array.from(upper).filter(char => /[A-Z]/.test(char)));
+    const letters = new Set(Array.from(upper).filter(char => /\p{L}/u.test(char)));
     const wrong = [...guesses].filter(letter => !letters.has(letter)).length;
     const solved = [...letters].every(letter => guesses.has(letter));
     setMeta(index, queue.length, score, `Misses ${wrong}/6`);
-    stage.innerHTML = `<h2>Reveal the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><div class="word-rail" aria-label="Word: ${solved ? esc(pair.term) : 'partly hidden'}">${Array.from(upper).map(char => `<span class="word-slot">${/[A-Z]/.test(char) ? (guesses.has(char) ? esc(char) : '') : esc(char)}</span>`).join('')}</div><div class="letter-grid" aria-label="Choose a letter">${alphabet.map(letter => `<button class="letter-button" data-letter="${letter}" ${guesses.has(letter) || solved || wrong >= 6 ? 'disabled' : ''}>${letter}</button>`).join('')}</div><p class="live-message ${kind}" role="status">${esc(message || `${6 - wrong} misses left`)}</p>`;
+    stage.innerHTML = `<h2>Reveal the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><div class="word-rail" aria-label="Word: ${solved ? esc(pair.term) : 'partly hidden'}">${Array.from(upper).map(char => `<span class="word-slot">${/\p{L}/u.test(char) ? (guesses.has(char) ? esc(char) : '') : esc(char)}</span>`).join('')}</div><div class="letter-grid" aria-label="Choose a letter">${alphabet.map(letter => `<button class="letter-button" data-letter="${letter}" ${guesses.has(letter) || solved || wrong >= 6 ? 'disabled' : ''}>${letter}</button>`).join('')}</div><form class="answer-form reveal-answer" id="reveal-form"><label class="sr-only" for="reveal-answer">Solve the whole word</label><input id="reveal-answer" autocomplete="off" placeholder="Or solve the whole word" ${solved || wrong >= 6 ? 'disabled' : ''} /><button class="button" type="submit" ${solved || wrong >= 6 ? 'disabled' : ''}>Solve</button></form><p class="live-message ${kind}" role="status">${esc(message || `${6 - wrong} misses left`)}</p>`;
     if (solved || wrong >= 6) {
       window.setTimeout(() => {
         if (solved) score += 1;
@@ -322,6 +332,18 @@ function playReveal(): void {
       return;
     }
     stage.querySelectorAll<HTMLButtonElement>('[data-letter]').forEach(button => button.addEventListener('click', () => { guesses.add(button.dataset.letter || ''); draw(letters.has(button.dataset.letter || '') ? 'That letter belongs.' : 'No match for that letter.', letters.has(button.dataset.letter || '') ? 'good' : 'bad'); }));
+    get<HTMLFormElement>('#reveal-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const input = get<HTMLInputElement>('#reveal-answer');
+      if (normalized(input.value) === normalized(pair.term)) {
+        letters.forEach(letter => guesses.add(letter));
+        draw('You solved the whole word!', 'good');
+      } else {
+        input.select();
+        const messageEl = stage.querySelector<HTMLElement>('.live-message');
+        if (messageEl) { messageEl.textContent = 'That is not the word yet. Try another letter or answer.'; messageEl.className = 'live-message bad'; }
+      }
+    });
   };
   draw();
 }
@@ -407,6 +429,8 @@ function route(): void {
 }
 
 window.addEventListener('hashchange', route);
+window.addEventListener('online', () => updateOnlineStatus(true));
+window.addEventListener('offline', () => updateOnlineStatus(false));
 route();
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

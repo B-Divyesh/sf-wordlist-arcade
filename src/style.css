@@ -153,6 +153,7 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .letter-grid { display: grid; grid-template-columns: repeat(9, 48px); justify-content: center; gap: 8px; }
 .letter-button { width: 48px; height: 48px; border: var(--line); background: var(--paper); color: var(--ink); border-radius: 8px; font-weight: 900; }
 .letter-button:disabled { opacity: .3; cursor: default; }
+.reveal-answer { margin-top: 24px; }
 
 .memory-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 900px; margin: auto; }
 .memory-card { min-height: 112px; border: var(--line); border-radius: 12px; background: var(--blue); color: white; padding: 12px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); }
@@ -171,9 +172,10 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .toast { position: fixed; z-index: 50; bottom: calc(20px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--ink); color: white; padding: 12px 18px; border-radius: 10px; box-shadow: 4px 4px 0 var(--yellow); font-weight: 800; }
 
 @media (max-width: 800px) {
-  .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 48px; }
-  .hero-art { grid-row: 1; margin-bottom: -80px; opacity: .36; z-index: -1; }
-  .hero-copy { margin-top: -30px; }
+  .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 36px; position: relative; overflow: hidden; }
+  .hero-art { position: absolute; z-index: 0; width: 620px; top: -10px; left: 34%; opacity: .13; pointer-events: none; }
+  .hero-art::before { display: none; }
+  .hero-copy { position: relative; z-index: 1; padding: 42px 0; }
   .maker { grid-template-columns: 1fr; }
   .how-list { grid-template-columns: 1fr; gap: 12px; }
   .play-nav { grid-template-columns: auto 1fr auto; }
@@ -187,6 +189,7 @@ input:focus, textarea:focus { border-color: var(--blue); }
   .shell { width: min(100% - 24px, 1180px); }
   .nav-links .text-link:not(:last-child) { display: none; }
   .hero { padding-top: 20px; }
+  .hero-copy { padding: 30px 0 42px; }
   h1 { font-size: clamp(2.7rem, 15vw, 4.2rem); }
   .hero-actions .button { width: 100%; }
   .maker-wrap, .how { padding: 52px 0; }

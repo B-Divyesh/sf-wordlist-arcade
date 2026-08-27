@@ -1,0 +1,18 @@
+{
+  "slug": "wordlist-arcade",
+  "title": "Wordlist Arcade: paste a vocab list, get six playable classroom games, unlimited and account-free",
+  "user": "Language, ESL and primary teachers who need a quick matching, spelling, or quiz game from this week's vocabulary and have used up Wordwall's lifetime free allowance.",
+  "job_to_be_done": "Paste word-definition or word-translation pairs once and instantly play or share six original classroom game formats.",
+  "smallest_useful_product": [
+    "One textarea for word and meaning pairs",
+    "Match-up, word strike, anagram, word reveal, memory pairs, and quiz race",
+    "Complete game state encoded in a shareable URL",
+    "Fullscreen projector and per-student modes",
+    "No accounts, grading, image uploads, printables, or AI-generated content"
+  ],
+  "privacy": "Local-first and account-free; no ads to children and no third-party runtime tracking.",
+  "artifact_class": "static-web",
+  "monetization": "free",
+  "success_measure": "At least 30% of generated lists opened five or more times by class link, and at least 25% of creators return with a new list within 14 days.",
+  "source": "Factory work order wordlist-arcade-build-1"
+}
