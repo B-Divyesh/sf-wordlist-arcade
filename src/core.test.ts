@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { choicesFor, decodeList, encodeList, normalized, parsePairs, shuffle } from './core';
+import { choicesFor, decodeList, encodeList, lessonArtifact, normalized, parseLessonArtifact, parsePairs, shuffle } from './core';
+
+function lowCompressibilityList() {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let seed = 2463534242;
+  const next = (length: number) => Array.from({ length }, () => {
+    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+    return alphabet[(seed >>> 0) % alphabet.length];
+  }).join('');
+  return {
+    title: next(80),
+    pairs: Array.from({ length: 30 }, () => ({ term: next(60), definition: next(180) }))
+  };
+}
 
 describe('word list parsing', () => {
   it('accepts common teacher-friendly separators and ignores blank lines', () => {
@@ -34,6 +47,20 @@ describe('share links', () => {
   it('rejects damaged or undersized payloads', () => {
     expect(decodeList('not-valid')).toBeNull();
     expect(decodeList(encodeList({ title: 'Tiny', pairs: list.pairs.slice(0, 2) }))).toBeNull();
+  });
+
+  it('round-trips the exact low-compressibility 30-pair boundary in the v2 codec', () => {
+    const boundary = lowCompressibilityList();
+    const encoded = encodeList(boundary);
+    expect(encoded).toMatch(/^v2\./);
+    expect(encoded.length).toBeGreaterThan(1900);
+    expect(decodeList(encoded)).toEqual(boundary);
+  });
+
+  it('exports and imports every pair in a portable lesson artifact', () => {
+    const boundary = lowCompressibilityList();
+    expect(parseLessonArtifact(lessonArtifact(boundary))).toEqual(boundary);
+    expect(parseLessonArtifact('{"format":"wrong"}')).toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-const APP_VERSION = '20260827-repair1';
+const APP_VERSION = '20260827-repair2';
 
 function pwaServiceWorker() {
   return {

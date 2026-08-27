@@ -84,7 +84,10 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .status { min-height: 28px; margin: 12px 0; color: var(--muted); }
 .status.error { color: #9d2e23; font-weight: 700; }
 .status.good { color: var(--green); font-weight: 700; }
-.share-limit { color: #765000; font-size: .9rem; font-weight: 700; line-height: 1.45; margin: 0 0 12px; }
+.share-limit { color: #765000; font-size: .9rem; font-weight: 700; line-height: 1.45; margin: 12px 0 0; }
+.share-tools { border-top: 2px dashed var(--ink); margin-top: 20px; padding-top: 18px; }
+.share-tools h3 { font-size: 1.1rem; }
+.share-tools > p:not(.share-limit) { color: var(--muted); font-size: .9rem; margin: 7px 0 12px; max-width: 62ch; }
 .offline-banner { background: var(--yellow); border-block: var(--line); padding: 9px 20px; text-align: center; font-weight: 800; }
 
 .game-shelf { align-self: start; }

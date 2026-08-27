@@ -11,9 +11,9 @@ Live site: <https://wordlist-arcade.sociobot.in>
 
 - Accepts one `word — definition` or `word — translation` pair per line.
 - Generates six games immediately from the same 3–30 pairs.
-- Encodes the complete list in a compressed URL-hash class link; no list is sent
-  to a server. Links over 1,900 characters are kept local with a clear warning,
-  because many LMS and email tools reject longer URLs.
+- Encodes the complete list in a compact, versioned URL-hash class link; no list
+  is sent to a server. Long links remain copyable, and a lossless lesson-file
+  download/import and Web Share option covers LMS or email URL-length limits.
 - Supports a projector-friendly fullscreen mode and individual shared play.
 - Saves the current draft locally in the teacher's browser.
 - Works as an installable, offline-capable PWA after the first visit.
@@ -51,16 +51,19 @@ npm test                         # unit + desktop/mobile browser + axe checks
 ```
 
 Run the suites independently with `npm run test:unit` or `npm run test:e2e`.
-The browser tests cover parsing, URL-state recovery, all six game routes, a
-complete match-up round, console errors, axe serious/critical findings, and a
-390px overflow check.
+The browser tests cover parsing, URL-state recovery, a maximum-size
+low-compressibility 30-pair link and lesson-file round trip in fresh browser
+contexts, all six game routes, a complete match-up round, console errors, axe
+serious/critical findings, and a 390px overflow check.
 
 ## Privacy and content
 
 Drafts are stored only in `localStorage`. Shared list data appears after `#` in
 the URL, which browsers do not send in HTTP requests, though anyone who receives
-the URL can read it. Teachers should not put student names or confidential data
-in lists. See `/privacy/` and `/terms/` for the complete plain-language notices.
+the URL can read it. A downloaded `wordlist-arcade-lesson.json` file contains
+the same complete list and is only sent where a teacher chooses to share it.
+Teachers should not put student names or confidential data in lists. See
+`/privacy/` and `/terms/` for the complete plain-language notices.
 
 The hero illustration was generated specifically for this product using the
 factory Azure image deployment. Its prompt, source, and provenance are in

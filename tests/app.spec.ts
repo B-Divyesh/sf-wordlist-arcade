@@ -10,6 +10,16 @@ adaptation — a feature that helps a living thing survive
 predator — an animal that hunts other animals
 camouflage — colors or shapes that help something hide`;
 
+function maximumLowCompressibilityList(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let seed = 2463534242;
+  const gibberish = (length: number) => Array.from({ length }, () => {
+    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+    return alphabet[(seed >>> 0) % alphabet.length];
+  }).join('');
+  return Array.from({ length: 30 }, () => `${gibberish(60)} — ${gibberish(180)}`).join('\n');
+}
+
 async function expectNoSeriousAxe(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
@@ -101,19 +111,51 @@ test('the production shell works offline after the first visit', async ({ page, 
   await context.setOffline(false);
 });
 
-test('long lists stay local and show the share-link safety limit', async ({ page }) => {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let seed = 2463534242;
-  const gibberish = (length: number) => Array.from({ length }, () => {
-    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
-    return alphabet[(seed >>> 0) % alphabet.length];
-  }).join('');
-  const longList = Array.from({ length: 30 }, (_, index) => `${gibberish(56)}${index} — ${gibberish(170)}${index}`).join('\n');
+test('the exact low-compressibility 30-pair boundary stays shareable and round-trips in fresh contexts', async ({ page, browser }) => {
+  const longList = maximumLowCompressibilityList();
   await page.goto('/');
+  await page.getByLabel('List name').fill('Maximum boundary lesson');
   await page.getByLabel('Words and meanings').fill(longList);
-  await expect(page.getByText(/too long for many LMS and email tools/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Copy class link' })).toBeDisabled();
+  await expect(page.getByText('30 pairs ready. Choose any game.')).toBeVisible();
+  await expect(page.getByText(/complete class link is .*characters/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy class link' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Download lesson' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Quiz race' })).toBeEnabled();
+
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy class link' }).click();
+  const classLink = await page.evaluate(() => navigator.clipboard.readText());
+  expect(classLink.length).toBeGreaterThan(1900);
+
+  const linkedContext = await browser.newContext();
+  const linkedPage = await linkedContext.newPage();
+  try {
+    await linkedPage.goto(classLink);
+    await expect(linkedPage.locator('.game-title h1')).toHaveText('Match up');
+    await linkedPage.getByRole('button', { name: /Games/ }).click();
+    await expect(linkedPage.getByLabel('List name')).toHaveValue('Maximum boundary lesson');
+    await expect(linkedPage.getByLabel('Words and meanings')).toHaveValue(longList);
+  } finally {
+    await linkedContext.close();
+  }
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download lesson' }).click();
+  const download = await downloadPromise;
+  const artifactPath = await download.path();
+  expect(artifactPath).not.toBeNull();
+
+  const importedContext = await browser.newContext();
+  const importedPage = await importedContext.newPage();
+  try {
+    await importedPage.goto('/');
+    await importedPage.locator('#lesson-file').setInputFiles(artifactPath!);
+    await expect(importedPage.getByText('Lesson imported: 30 pairs are ready to play.')).toBeVisible();
+    await expect(importedPage.getByLabel('List name')).toHaveValue('Maximum boundary lesson');
+    await expect(importedPage.getByLabel('Words and meanings')).toHaveValue(longList);
+  } finally {
+    await importedContext.close();
+  }
 });
 
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
@@ -127,7 +169,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260827-repair1'");
+  expect(worker).toContain("const VERSION = '20260827-repair2'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');

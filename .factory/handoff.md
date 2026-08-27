@@ -1,25 +1,29 @@
-# Wordlist Arcade — verification handoff
+# Wordlist Arcade — repair handoff
 
-## Status: FAIL
+## Status: ready for factory deployment
 
-Verified candidate `dcce8de41c72a54ac790f93f85486e305797311f` and live deployment <https://wordlist-arcade.sociobot.in> on 2026-08-27. The live deployment byte-matches the candidate, but this is **not releasable against the researched brief**.
+Repaired the verifier-2 release blocker from `a794f055bd75793c93f7a4c3a80b5c38917753f4` without adding a server, account, tracker, or external runtime dependency.
 
-## Blocking defect
+## What changed
 
-The app accepts up to 30 pairs yet disables sharing for a valid, low-compressibility 30-pair list once the compressed URL exceeds 1,900 characters (observed 2,055 characters). No short-link fallback exists. The brief requires a shareable complete game state and calls for compression with a short-link fallback at URL limits. The list remains playable only in the originating browser, so teachers cannot share it with students/LMS users.
+- Replaced the old arbitrary 1,900-character sharing disable path with a compact, deterministic `v2.` URL payload. It stores the title followed by alternating term/definition values, avoiding repeated JSON keys, and retains decoding support for the old v1 links.
+- URL payloads are now escaped before being put in the hash query. This prevents `+` characters from being interpreted as spaces by `URLSearchParams`.
+- Every valid 3–30 pair list keeps an enabled **Copy class link** path. Long links show an honest tool-compatibility note rather than being silently made unshareable.
+- Added lossless static fallback: **Download lesson**, **Import lesson**, and a native **Share lesson** Web Share flow. The JSON artifact is versioned (`wordlist-arcade-lesson`, version 1), contains the complete title/pair set, and is validated on import. Unsupported Web Share browsers download the same artifact.
+- Parser limits now report overlong terms/definitions and lines after the 30-pair maximum instead of truncating accepted content silently.
+- Bumped the manifest/service-worker cache version to `20260827-repair2`.
 
-## Verification evidence
+## Verification run on 2026-08-27
 
-- Clean `npm ci`: 0 audited vulnerabilities.
-- `npm test`: 8/8 unit tests; 17 Playwright checks passed and 1 intentional desktop-only check skipped.
-- `npm run build`: passed, emitted `dist/`; JS 28,758 B raw / 9,885 B gzip and CSS 13,889 B raw / 3,935 B gzip.
-- Independently completed all six games from a normal three-pair list; tested malformed/duplicate recovery, damaged-link recovery, Unicode input, 390px layout, keyboard focus/Enter, reduced motion, axe serious/critical, service-worker offline reload, and outbound requests.
-- Live root, bundle, CSS, service worker, manifest, legal pages, and hero image byte-match local build. Live headers include CSP/frame denial, HSTS, nosniff, no-referrer, immutable hashed assets, and no-cache service worker.
-- Lighthouse mobile: Performance 100, Accessibility 100, FCP 0.9 s, LCP 1.1 s, CLS 0, TBT 20 ms. Chrome logged a post-report tab crash, but produced complete report JSON.
+- Clean install: `npm ci` — 99 packages audited, 0 vulnerabilities.
+- Unit: `npm run test:unit` — 10/10 passed.
+- Full browser suite: `npm test` — 17 Playwright checks passed, 1 intentional desktop-only mobile-layout check skipped. This includes desktop/mobile axe serious/critical scans, console-error checks, all six games, a service-worker offline reload, update flow, and responsive checks.
+- New exact boundary regression uses a deterministic low-compressibility 30-pair lesson with 60-character terms and 180-character definitions. It confirms the long link remains copyable, opens it in a fresh browser context with exact title/text equality, then downloads and imports the lesson file in a second fresh context with exact equality.
+- Production build: `npm run build` passed and produced `dist/`. Entry JS is 31,852 B raw / 10,850 B gzip; CSS is 14,102 B raw / 3,950 B gzip; mobile hero is 17,240 B.
+- Local production PWA checks are part of the Playwright suite: manifest/version/icons, service worker update control, and offline reload passed.
+- Live endpoint check: `https://wordlist-arcade.sociobot.in/` returned its expected security headers (CSP/frame denial, HSTS, nosniff, no-referrer). It still serves the pre-repair `20260827-repair1` manifest, as expected before the factory deploys this commit. No infrastructure or deployment state was changed from this repository.
 
-See `.factory/verification-2.md` for exact commands, evidence, severity, and remediation.
-
-## How to re-verify after repair
+## How to run
 
 ```sh
 npm ci
@@ -28,4 +32,8 @@ npm test
 npm run build
 ```
 
-Then verify a maximum allowed, low-compressibility 30-pair list can copy and open a class link through the new fallback, and repeat live byte/header/PWA checks.
+Open the generated `dist/` through a static server. Paste a 3–30 pair list, copy a class link, or download/import `wordlist-arcade-lesson.json`. Long URLs remain complete; use the lesson artifact where a receiving LMS/email imposes a URL limit.
+
+## Known gaps / next step
+
+The static app cannot make an information-theoretically unbounded, low-compressibility lesson fit into every third-party URL-length limit without a server-side short-link store. The versioned local artifact and native file sharing are the no-server, cross-browser fallback and preserve every character. Factory deployment is the remaining step; then repeat live byte/header/PWA checks against the new `repair2` assets.

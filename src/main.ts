@@ -1,11 +1,9 @@
 import './style.css';
-import { choicesFor, decodeList, encodeList, EXAMPLE, normalized, parsePairs, shuffle, type Pair, type SharedList } from './core';
+import { choicesFor, decodeList, encodeList, EXAMPLE, lessonArtifact, normalized, parseLessonArtifact, parsePairs, shuffle, type Pair, type SharedList } from './core';
 
 type GameId = 'match' | 'strike' | 'anagram' | 'reveal' | 'memory' | 'race';
 
-// This leaves room below the widely supported 2,048-character URL limit.
-// Lists can still be played locally at any supported size.
-const SHARE_URL_LIMIT = 1900;
+const LONG_LINK_GUIDANCE = 1900;
 
 const games: { id: GameId; name: string; short: string; color: string }[] = [
   { id: 'match', name: 'Match up', short: 'Connect each word to its meaning.', color: '#d9d3f8' },
@@ -97,7 +95,12 @@ function renderHome(prefill?: SharedList, notice = ''): void {
           <div class="field"><label for="wordlist">Words and meanings <span class="label-help">Example: nocturnal — active during the night</span></label><textarea id="wordlist" spellcheck="true" aria-describedby="parse-status">${esc(initialText)}</textarea></div>
           <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load example</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
           <div class="status" id="parse-status" role="status" aria-live="polite">Add at least 3 pairs to unlock the games.</div>
-          <p class="share-limit" id="share-limit" hidden></p>
+          <section class="share-tools" aria-labelledby="share-tools-title">
+            <h3 id="share-tools-title">Share every list</h3>
+            <p>Copy the class link, or send a lesson file when an LMS or email tool has a link-length limit. Importing the file restores every pair without an account or server.</p>
+            <div class="inline-actions"><button class="button small" id="download-lesson" type="button" disabled>Download lesson</button><button class="button small" id="share-lesson" type="button" disabled>Share lesson</button><button class="button small" id="import-lesson" type="button">Import lesson</button><input class="sr-only" id="lesson-file" type="file" accept="application/json,.json" aria-label="Choose a Wordlist Arcade lesson file" /></div>
+            <p class="share-limit" id="share-limit" hidden></p>
+          </section>
           <p class="label-help">Up to 30 pairs. Separate each word and meaning with an em dash, hyphen, colon, equals sign, vertical bar, or tab.</p>
         </div>
         <div class="game-shelf" aria-labelledby="shelf-title">
@@ -117,6 +120,11 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   get<HTMLButtonElement>('#load-example').addEventListener('click', () => { textArea.value = EXAMPLE; update(); textArea.focus(); });
   get<HTMLButtonElement>('#clear-draft').addEventListener('click', () => { textArea.value = ''; titleInput.value = 'My vocabulary'; removeLocal('wordlist-arcade-draft'); removeLocal('wordlist-arcade-title'); update(); textArea.focus(); });
   get<HTMLButtonElement>('#copy-list').addEventListener('click', () => copyLink('match'));
+  get<HTMLButtonElement>('#download-lesson').addEventListener('click', downloadLesson);
+  get<HTMLButtonElement>('#share-lesson').addEventListener('click', () => { void shareLesson(); });
+  const lessonFile = get<HTMLInputElement>('#lesson-file');
+  get<HTMLButtonElement>('#import-lesson').addEventListener('click', () => lessonFile.click());
+  lessonFile.addEventListener('change', () => { void importLesson(lessonFile); });
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game as GameId)));
   updateMaker(titleInput.value, textArea.value);
   updateOnlineStatus();
@@ -145,12 +153,13 @@ function updateMaker(title: string, raw: string): void {
   const enabled = result.pairs.length >= 3;
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => { button.disabled = !enabled; });
   const shareUrl = gameUrl('match');
-  const shareable = enabled && shareUrl.length <= SHARE_URL_LIMIT;
-  get<HTMLButtonElement>('#copy-list').disabled = !shareable;
+  get<HTMLButtonElement>('#copy-list').disabled = !enabled;
+  get<HTMLButtonElement>('#download-lesson').disabled = !enabled;
+  get<HTMLButtonElement>('#share-lesson').disabled = !enabled;
   const shareLimit = get<HTMLElement>('#share-limit');
-  shareLimit.hidden = shareable || !enabled;
-  if (!shareable && enabled) {
-    shareLimit.textContent = `This ${shareUrl.length.toLocaleString()}-character class link is too long for many LMS and email tools. Keep it under ${SHARE_URL_LIMIT.toLocaleString()} characters by using fewer pairs or shorter meanings. Your list still plays privately in this browser.`;
+  shareLimit.hidden = !enabled || shareUrl.length <= LONG_LINK_GUIDANCE;
+  if (enabled && shareUrl.length > LONG_LINK_GUIDANCE) {
+    shareLimit.textContent = `This complete class link is ${shareUrl.length.toLocaleString()} characters. You can still copy it for browsers and tools that support long links. If an LMS or email tool rejects it, download or share the lesson file instead; importing it restores every pair.`;
   }
 }
 
@@ -161,25 +170,61 @@ function updateOnlineStatus(online = navigator.onLine): void {
 
 function gameUrl(game: GameId): string {
   const base = `${location.origin}${location.pathname}`;
-  return `${base}#play/${game}?d=${encodeList(currentList)}`;
-}
-
-function canShare(game: GameId): boolean {
-  return gameUrl(game).length <= SHARE_URL_LIMIT;
+  return `${base}#play/${game}?d=${encodeURIComponent(encodeList(currentList))}`;
 }
 
 async function copyLink(game: GameId): Promise<void> {
   const url = gameUrl(game);
-  if (!canShare(game)) {
-    showToast(`This class link is ${url.length.toLocaleString()} characters. Shorten the list to share it reliably (limit: ${SHARE_URL_LIMIT.toLocaleString()}).`);
-    return;
-  }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Class link copied. Anyone with the link can play.');
+    showToast(url.length > LONG_LINK_GUIDANCE ? 'Complete class link copied. If an LMS rejects it, send the lesson file instead.' : 'Class link copied. Anyone with the link can play.');
   } catch {
     window.prompt('Copy this class link:', url);
   }
+}
+
+function lessonFile(): File {
+  return new File([lessonArtifact(currentList)], 'wordlist-arcade-lesson.json', { type: 'application/json' });
+}
+
+function downloadLesson(): void {
+  const file = lessonFile();
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('Lesson downloaded. Import it in Wordlist Arcade to restore every pair.');
+}
+
+async function shareLesson(): Promise<void> {
+  const file = lessonFile();
+  const data = { title: `${currentList.title} — Wordlist Arcade lesson`, text: 'Import this lesson file in Wordlist Arcade to play all six games.', files: [file] };
+  try {
+    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+      await navigator.share(data);
+      showToast('Lesson ready to share. It contains every pair.');
+      return;
+    }
+    downloadLesson();
+  } catch (error) {
+    if ((error as DOMException).name !== 'AbortError') showToast('Could not open sharing here. The lesson can still be downloaded.');
+  }
+}
+
+async function importLesson(input: HTMLInputElement): Promise<void> {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const imported = parseLessonArtifact(await file.text());
+  if (!imported) {
+    showToast('That file is not a complete Wordlist Arcade lesson.');
+    return;
+  }
+  currentList = imported;
+  renderHome(imported, `Lesson imported: ${imported.pairs.length} pairs are ready to play.`);
+  window.requestAnimationFrame(() => get<HTMLTextAreaElement>('#wordlist').focus());
 }
 
 function showToast(message: string): void {
@@ -209,7 +254,7 @@ function showUpdateToast(): void {
 
 function openGame(game: GameId): void {
   if (currentList.pairs.length < 3) return;
-  location.hash = `play/${game}?d=${encodeList(currentList)}`;
+  location.hash = `play/${game}?d=${encodeURIComponent(encodeList(currentList))}`;
 }
 
 function playChrome(game: (typeof games)[number]): string {
