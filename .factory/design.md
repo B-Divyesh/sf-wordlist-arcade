@@ -129,3 +129,9 @@ Avoid: readable text, letters, numbers, logos, watermarks, real people, hands,
 screenshots, neon glow, glossy 3D plastic, casino imagery, clutter, gradients.
 
 The site footer discloses that the hero illustration is AI-generated.
+
+The install icons are original derivatives of the existing hand-authored
+Wordlist Arcade mark, rasterized locally from `public/icons/pwa-icon.svg` into
+the required 192px and 512px PNG files. They use the palette above and retain a
+warm-paper safe zone for Android maskable icon cropping; no third-party artwork
+or runtime icon service is used.

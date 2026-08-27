@@ -84,6 +84,7 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .status { min-height: 28px; margin: 12px 0; color: var(--muted); }
 .status.error { color: #9d2e23; font-weight: 700; }
 .status.good { color: var(--green); font-weight: 700; }
+.share-limit { color: #765000; font-size: .9rem; font-weight: 700; line-height: 1.45; margin: 0 0 12px; }
 .offline-banner { background: var(--yellow); border-block: var(--line); padding: 9px 20px; text-align: center; font-weight: 800; }
 
 .game-shelf { align-self: start; }
@@ -149,6 +150,7 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .answer-form input { text-align: center; font-size: 1.25rem; }
 
 .word-rail { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin: 28px 0; }
+.word-rail > [aria-hidden="true"] { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
 .word-slot { width: 34px; border-bottom: 4px solid var(--ink); min-height: 42px; text-align: center; font: 900 1.5rem/1.4 "Arial Rounded MT Bold", "Trebuchet MS", sans-serif; }
 .letter-grid { display: grid; grid-template-columns: repeat(9, 48px); justify-content: center; gap: 8px; }
 .letter-button { width: 48px; height: 48px; border: var(--line); background: var(--paper); color: var(--ink); border-radius: 8px; font-weight: 900; }
@@ -170,6 +172,8 @@ input:focus, textarea:focus { border-color: var(--blue); }
 .finish .inline-actions { justify-content: center; margin-top: 24px; }
 
 .toast { position: fixed; z-index: 50; bottom: calc(20px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--ink); color: white; padding: 12px 18px; border-radius: 10px; box-shadow: 4px 4px 0 var(--yellow); font-weight: 800; }
+.update-toast { width: min(calc(100% - 32px), 430px); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.update-toast .button { flex: 0 0 auto; background: var(--yellow); color: var(--ink); box-shadow: none; }
 
 @media (max-width: 800px) {
   .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 36px; position: relative; overflow: hidden; }

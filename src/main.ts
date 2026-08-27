@@ -3,6 +3,10 @@ import { choicesFor, decodeList, encodeList, EXAMPLE, normalized, parsePairs, sh
 
 type GameId = 'match' | 'strike' | 'anagram' | 'reveal' | 'memory' | 'race';
 
+// This leaves room below the widely supported 2,048-character URL limit.
+// Lists can still be played locally at any supported size.
+const SHARE_URL_LIMIT = 1900;
+
 const games: { id: GameId; name: string; short: string; color: string }[] = [
   { id: 'match', name: 'Match up', short: 'Connect each word to its meaning.', color: '#d9d3f8' },
   { id: 'strike', name: 'Word strike', short: 'Hit the right word before moving on.', color: '#c83b2d' },
@@ -18,6 +22,7 @@ const app: HTMLDivElement = appRoot;
 
 let currentList: SharedList = { title: 'My vocabulary', pairs: [] };
 let currentGame: GameId | null = null;
+let waitingWorker: ServiceWorker | null = null;
 
 function readLocal(key: string): string {
   try { return localStorage.getItem(key) || ''; } catch { return ''; }
@@ -92,6 +97,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
           <div class="field"><label for="wordlist">Words and meanings <span class="label-help">Example: nocturnal — active during the night</span></label><textarea id="wordlist" spellcheck="true" aria-describedby="parse-status">${esc(initialText)}</textarea></div>
           <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load example</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
           <div class="status" id="parse-status" role="status" aria-live="polite">Add at least 3 pairs to unlock the games.</div>
+          <p class="share-limit" id="share-limit" hidden></p>
           <p class="label-help">Up to 30 pairs. Separate each word and meaning with an em dash, hyphen, colon, equals sign, vertical bar, or tab.</p>
         </div>
         <div class="game-shelf" aria-labelledby="shelf-title">
@@ -100,7 +106,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
         </div>
       </div></section>
       <section class="how shell" id="how"><p class="eyebrow">No setup maze</p><h2>From notes to game in three moves.</h2><ol class="how-list"><li><h3>Paste your pairs</h3><p>Words, translations, definitions, facts—if they come in pairs, they can play.</p></li><li><h3>Choose a mode</h3><p>All six games are ready from the same list. Switch whenever your class needs a change.</p></li><li><h3>Project or share</h3><p>Go fullscreen together or copy the link for students. The list travels safely inside the URL.</p></li></ol></section>
-    </main>${footer()}<div class="toast" id="toast" role="status" hidden></div>`;
+    </main>${footer()}<div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 
   const titleInput = get<HTMLInputElement>('#list-title');
   const textArea = get<HTMLTextAreaElement>('#wordlist');
@@ -114,6 +120,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game as GameId)));
   updateMaker(titleInput.value, textArea.value);
   updateOnlineStatus();
+  if (waitingWorker) showUpdateToast();
   if (notice) showToast(notice);
 }
 
@@ -137,7 +144,14 @@ function updateMaker(title: string, raw: string): void {
   }
   const enabled = result.pairs.length >= 3;
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => { button.disabled = !enabled; });
-  get<HTMLButtonElement>('#copy-list').disabled = !enabled;
+  const shareUrl = gameUrl('match');
+  const shareable = enabled && shareUrl.length <= SHARE_URL_LIMIT;
+  get<HTMLButtonElement>('#copy-list').disabled = !shareable;
+  const shareLimit = get<HTMLElement>('#share-limit');
+  shareLimit.hidden = shareable || !enabled;
+  if (!shareable && enabled) {
+    shareLimit.textContent = `This ${shareUrl.length.toLocaleString()}-character class link is too long for many LMS and email tools. Keep it under ${SHARE_URL_LIMIT.toLocaleString()} characters by using fewer pairs or shorter meanings. Your list still plays privately in this browser.`;
+  }
 }
 
 function updateOnlineStatus(online = navigator.onLine): void {
@@ -150,8 +164,16 @@ function gameUrl(game: GameId): string {
   return `${base}#play/${game}?d=${encodeList(currentList)}`;
 }
 
+function canShare(game: GameId): boolean {
+  return gameUrl(game).length <= SHARE_URL_LIMIT;
+}
+
 async function copyLink(game: GameId): Promise<void> {
   const url = gameUrl(game);
+  if (!canShare(game)) {
+    showToast(`This class link is ${url.length.toLocaleString()} characters. Shorten the list to share it reliably (limit: ${SHARE_URL_LIMIT.toLocaleString()}).`);
+    return;
+  }
   try {
     await navigator.clipboard.writeText(url);
     showToast('Class link copied. Anyone with the link can play.');
@@ -168,6 +190,23 @@ function showToast(message: string): void {
   window.setTimeout(() => { toast.hidden = true; }, 3000);
 }
 
+function updateToast(): string {
+  return '<div class="toast update-toast" id="update-toast" hidden><span id="update-message" role="status">A new version is ready.</span><button class="button small" id="update-now" type="button">Update now</button></div>';
+}
+
+function showUpdateToast(): void {
+  const toast = document.querySelector<HTMLElement>('#update-toast');
+  const button = document.querySelector<HTMLButtonElement>('#update-now');
+  if (!toast || !button || !waitingWorker) return;
+  toast.hidden = false;
+  button.onclick = () => {
+    button.disabled = true;
+    const message = document.querySelector<HTMLElement>('#update-message');
+    if (message) message.textContent = 'Updating Wordlist Arcade…';
+    waitingWorker?.postMessage({ type: 'SKIP_WAITING' });
+  };
+}
+
 function openGame(game: GameId): void {
   if (currentList.pairs.length < 3) return;
   location.hash = `play/${game}?d=${encodeList(currentList)}`;
@@ -178,7 +217,7 @@ function playChrome(game: (typeof games)[number]): string {
     <button class="button small" id="back-home" type="button">${icon('back')}<span>Games</span></button>
     <div class="game-title"><span>${esc(currentList.title)}</span><h1>${game.name}</h1></div>
     <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span class="fullscreen-label">Share</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span class="fullscreen-label">Fullscreen</span></button></div>
-  </nav></header><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main></div><div class="toast" id="toast" role="status" hidden></div>`;
+  </nav></header><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main></div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 }
 
 function setupPlayControls(game: GameId): void {
@@ -213,6 +252,7 @@ function renderGame(gameId: GameId): void {
   currentGame = gameId;
   app.innerHTML = playChrome(game);
   setupPlayControls(gameId);
+  if (waitingWorker) showUpdateToast();
   if (gameId === 'match') playMatch();
   if (gameId === 'strike') playStrike();
   if (gameId === 'anagram') playAnagram();
@@ -233,7 +273,7 @@ function playMatch(): void {
 
   const draw = (message = '', kind = '') => {
     setMeta(matched.size, pairs.length, Math.max(0, matched.size * 2 - Math.max(0, attempts - matched.size)));
-    stage.innerHTML = `<h2>Make every pair</h2><p class="prompt">Choose one word, then its matching meaning.</p><div class="match-grid"><div class="match-column" aria-label="Words">${terms.map(pair => `<button class="match-tile ${selectedTerm === pair.id ? 'selected' : ''} ${matched.has(pair.id) ? 'matched' : ''}" data-side="term" data-id="${pair.id}" ${matched.has(pair.id) ? 'disabled' : ''}>${esc(pair.term)}</button>`).join('')}</div><div class="match-column" aria-label="Meanings">${definitions.map(pair => `<button class="match-tile ${selectedDefinition === pair.id ? 'selected' : ''} ${matched.has(pair.id) ? 'matched' : ''}" data-side="definition" data-id="${pair.id}" ${matched.has(pair.id) ? 'disabled' : ''}>${esc(pair.definition)}</button>`).join('')}</div></div><p class="live-message ${kind}" role="status">${esc(message)}</p>`;
+    stage.innerHTML = `<h2>Make every pair</h2><p class="prompt">Choose one word, then its matching meaning.</p><div class="match-grid"><div class="match-column" role="group" aria-label="Words">${terms.map(pair => `<button class="match-tile ${selectedTerm === pair.id ? 'selected' : ''} ${matched.has(pair.id) ? 'matched' : ''}" data-side="term" data-id="${pair.id}" ${matched.has(pair.id) ? 'disabled' : ''}>${esc(pair.term)}</button>`).join('')}</div><div class="match-column" role="group" aria-label="Meanings">${definitions.map(pair => `<button class="match-tile ${selectedDefinition === pair.id ? 'selected' : ''} ${matched.has(pair.id) ? 'matched' : ''}" data-side="definition" data-id="${pair.id}" ${matched.has(pair.id) ? 'disabled' : ''}>${esc(pair.definition)}</button>`).join('')}</div></div><p class="live-message ${kind}" role="status">${esc(message)}</p>`;
     stage.querySelectorAll<HTMLButtonElement>('[data-side]').forEach(button => button.addEventListener('click', () => {
       const id = Number(button.dataset.id);
       if (button.dataset.side === 'term') selectedTerm = id; else selectedDefinition = id;
@@ -290,7 +330,7 @@ function playAnagram(): void {
     const pair = queue[index];
     const characters = shuffle(Array.from(pair.term.replace(/\s/g, '')));
     setMeta(index, queue.length, score);
-    stage.innerHTML = `<h2>Unscramble the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><div class="anagram-tiles" aria-label="Scrambled letters">${characters.map((char, i) => `<span class="letter-tile" style="--tilt:${(i % 3 - 1) * 2}deg">${esc(char.toUpperCase())}</span>`).join('')}</div><form class="answer-form" id="anagram-form"><label class="sr-only" for="anagram-answer">Your answer</label><input id="anagram-answer" autocomplete="off" autocapitalize="none" placeholder="Type the word" required /><button class="button primary" type="submit">Check word</button></form><p class="live-message ${kind}" role="status">${esc(message)}</p>`;
+    stage.innerHTML = `<h2>Unscramble the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><div class="anagram-tiles" role="group" aria-label="Scrambled letters">${characters.map((char, i) => `<span class="letter-tile" style="--tilt:${(i % 3 - 1) * 2}deg">${esc(char.toUpperCase())}</span>`).join('')}</div><form class="answer-form" id="anagram-form"><label class="sr-only" for="anagram-answer">Your answer</label><input id="anagram-answer" autocomplete="off" autocapitalize="none" placeholder="Type the word" required /><button class="button primary" type="submit">Check word</button></form><p class="live-message ${kind}" role="status">${esc(message)}</p>`;
     get<HTMLFormElement>('#anagram-form').addEventListener('submit', event => {
       event.preventDefault();
       const input = get<HTMLInputElement>('#anagram-answer');
@@ -322,7 +362,7 @@ function playReveal(): void {
     const wrong = [...guesses].filter(letter => !letters.has(letter)).length;
     const solved = [...letters].every(letter => guesses.has(letter));
     setMeta(index, queue.length, score, `Misses ${wrong}/6`);
-    stage.innerHTML = `<h2>Reveal the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><div class="word-rail" aria-label="Word: ${solved ? esc(pair.term) : 'partly hidden'}">${Array.from(upper).map(char => `<span class="word-slot">${/\p{L}/u.test(char) ? (guesses.has(char) ? esc(char) : '') : esc(char)}</span>`).join('')}</div><div class="letter-grid" aria-label="Choose a letter">${alphabet.map(letter => `<button class="letter-button" data-letter="${letter}" ${guesses.has(letter) || solved || wrong >= 6 ? 'disabled' : ''}>${letter}</button>`).join('')}</div><form class="answer-form reveal-answer" id="reveal-form"><label class="sr-only" for="reveal-answer">Solve the whole word</label><input id="reveal-answer" autocomplete="off" placeholder="Or solve the whole word" ${solved || wrong >= 6 ? 'disabled' : ''} /><button class="button" type="submit" ${solved || wrong >= 6 ? 'disabled' : ''}>Solve</button></form><p class="live-message ${kind}" role="status">${esc(message || `${6 - wrong} misses left`)}</p>`;
+    stage.innerHTML = `<h2>Reveal the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><p class="word-rail"><span class="sr-only">Word: ${solved ? esc(pair.term) : 'partly hidden'}</span><span aria-hidden="true">${Array.from(upper).map(char => `<span class="word-slot">${/\p{L}/u.test(char) ? (guesses.has(char) ? esc(char) : '') : esc(char)}</span>`).join('')}</span></p><div class="letter-grid" role="group" aria-label="Choose a letter">${alphabet.map(letter => `<button class="letter-button" data-letter="${letter}" ${guesses.has(letter) || solved || wrong >= 6 ? 'disabled' : ''}>${letter}</button>`).join('')}</div><form class="answer-form reveal-answer" id="reveal-form"><label class="sr-only" for="reveal-answer">Solve the whole word</label><input id="reveal-answer" autocomplete="off" placeholder="Or solve the whole word" ${solved || wrong >= 6 ? 'disabled' : ''} /><button class="button" type="submit" ${solved || wrong >= 6 ? 'disabled' : ''}>Solve</button></form><p class="live-message ${kind}" role="status">${esc(message || `${6 - wrong} misses left`)}</p>`;
     if (solved || wrong >= 6) {
       window.setTimeout(() => {
         if (solved) score += 1;
@@ -395,7 +435,7 @@ function playRace(): void {
     const pair = queue[index];
     const options = choicesFor(pair, currentList.pairs, 4);
     setMeta(index, queue.length, score, 'Finish line');
-    stage.innerHTML = `<h2>Race to the finish</h2><div class="race-track" aria-label="Race progress: ${index} of ${queue.length}">${queue.map((_, step) => `<span class="race-step ${step < index ? 'done' : ''}"></span>`).join('')}</div><p class="prompt">Which word matches “${esc(pair.definition)}”?</p><div class="choice-grid">${options.map(term => `<button class="choice ${selected === term ? (normalized(term) === normalized(pair.term) ? 'correct' : 'wrong') : ''}" data-answer="${esc(term)}" ${locked ? 'disabled' : ''}>${esc(term)}</button>`).join('')}</div><p class="live-message ${message.startsWith('Correct') ? 'good' : message ? 'bad' : ''}" role="status">${esc(message)}</p>`;
+    stage.innerHTML = `<h2>Race to the finish</h2><div class="race-track" role="progressbar" aria-label="Race progress" aria-valuemin="0" aria-valuemax="${queue.length}" aria-valuenow="${index}" aria-valuetext="${index} of ${queue.length} questions completed">${queue.map((_, step) => `<span class="race-step ${step < index ? 'done' : ''}"></span>`).join('')}</div><p class="prompt">Which word matches “${esc(pair.definition)}”?</p><div class="choice-grid">${options.map(term => `<button class="choice ${selected === term ? (normalized(term) === normalized(pair.term) ? 'correct' : 'wrong') : ''}" data-answer="${esc(term)}" ${locked ? 'disabled' : ''}>${esc(term)}</button>`).join('')}</div><p class="live-message ${message.startsWith('Correct') ? 'good' : message ? 'bad' : ''}" role="status">${esc(message)}</p>`;
     stage.querySelectorAll<HTMLButtonElement>('[data-answer]').forEach(button => button.addEventListener('click', () => {
       if (locked) return;
       locked = true;
@@ -434,5 +474,28 @@ window.addEventListener('offline', () => updateOnlineStatus(false));
 route();
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => undefined));
+  window.addEventListener('load', () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      const offerUpdate = (worker: ServiceWorker | null) => {
+        if (!worker) return;
+        waitingWorker = worker;
+        showUpdateToast();
+      };
+      offerUpdate(registration.waiting);
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener('statechange', () => {
+          if (installing.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(installing);
+        });
+      });
+    }).catch(() => undefined);
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      location.reload();
+    });
+  });
 }

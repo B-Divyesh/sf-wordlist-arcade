@@ -12,7 +12,8 @@ Live site: <https://wordlist-arcade.sociobot.in>
 - Accepts one `word — definition` or `word — translation` pair per line.
 - Generates six games immediately from the same 3–30 pairs.
 - Encodes the complete list in a compressed URL-hash class link; no list is sent
-  to a server.
+  to a server. Links over 1,900 characters are kept local with a clear warning,
+  because many LMS and email tools reject longer URLs.
 - Supports a projector-friendly fullscreen mode and individual shared play.
 - Saves the current draft locally in the teacher's browser.
 - Works as an installable, offline-capable PWA after the first visit.
@@ -70,7 +71,7 @@ factory Azure image deployment. Its prompt, source, and provenance are in
 - `src/main.ts` — application UI, routing, and six game engines
 - `src/core.ts` — parsing, URL compression, and game helpers
 - `src/style.css` — responsive product-specific visual system
-- `public/sw.js` — offline cache
+- `src/sw-template.js` — generated, versioned offline cache worker
 - `.factory/design.md` — visual thesis and asset provenance
 - `.factory/handoff.md` — verification results and operational notes
 

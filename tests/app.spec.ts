@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { expect, test, type Page } from '@playwright/test';
 
 const list = `photosynthesis — how plants use light to make food
 habitat — the natural home of a plant or animal
@@ -7,6 +9,11 @@ nocturnal — active during the night
 adaptation — a feature that helps a living thing survive
 predator — an animal that hunts other animals
 camouflage — colors or shapes that help something hide`;
+
+async function expectNoSeriousAxe(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+}
 
 test('landing page is accessible and has no console errors', async ({ page }, testInfo) => {
   const errors: string[] = [];
@@ -18,12 +25,11 @@ test('landing page is accessible and has no console errors', async ({ page }, te
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('img')).toHaveAttribute('alt', /geometric machine/);
   await expect(page.getByRole('button', { name: 'Match up' })).toBeDisabled();
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+  await expectNoSeriousAxe(page);
   expect(errors, `console errors in ${testInfo.project.name}`).toEqual([]);
 });
 
-test('a pasted list unlocks and opens all six games', async ({ page }) => {
+test('all six populated game states have no serious or critical axe findings', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('List name').fill('Living things');
   await page.getByLabel('Words and meanings').fill(list);
@@ -35,6 +41,7 @@ test('a pasted list unlocks and opens all six games', async ({ page }) => {
     await expect(page.locator('#game-stage')).toBeVisible();
     expect(page.url()).toContain('#play/');
     expect(page.url()).toContain('?d=');
+    await expectNoSeriousAxe(page);
     await page.getByRole('button', { name: /Games/ }).click();
     await expect(page.getByText('6 pairs ready. Choose any game.')).toBeVisible();
   }
@@ -79,8 +86,7 @@ test('mobile layout does not overflow horizontally', async ({ page }, testInfo) 
   await expect(page.locator('.memory-grid')).toBeVisible();
   const gameOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(gameOverflow).toBeLessThanOrEqual(1);
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+  await expectNoSeriousAxe(page);
 });
 
 test('the production shell works offline after the first visit', async ({ page, context }) => {
@@ -93,4 +99,57 @@ test('the production shell works offline after the first visit', async ({ page, 
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await expect(page.locator('#offline-banner')).toBeVisible();
   await context.setOffline(false);
+});
+
+test('long lists stay local and show the share-link safety limit', async ({ page }) => {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let seed = 2463534242;
+  const gibberish = (length: number) => Array.from({ length }, () => {
+    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+    return alphabet[(seed >>> 0) % alphabet.length];
+  }).join('');
+  const longList = Array.from({ length: 30 }, (_, index) => `${gibberish(56)}${index} — ${gibberish(170)}${index}`).join('\n');
+  await page.goto('/');
+  await page.getByLabel('Words and meanings').fill(longList);
+  await expect(page.getByText(/too long for many LMS and email tools/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy class link' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Quiz race' })).toBeEnabled();
+});
+
+test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
+  await page.goto('/');
+  const manifest = await (await page.request.get('/manifest.webmanifest')).json();
+  expect(manifest.start_url).toContain('?v=');
+  expect(manifest.icons).toEqual(expect.arrayContaining([
+    expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
+    expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
+    expect.objectContaining({ sizes: '512x512', purpose: 'maskable' })
+  ]));
+  const worker = await (await page.request.get('/sw.js')).text();
+  expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
+  expect(worker).toContain("const VERSION = '20260827-repair1'");
+  const config = await (await page.request.get('/staticwebapp.config.json')).json();
+  expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
+  expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
+  expect(config.routes).toEqual(expect.arrayContaining([
+    expect.objectContaining({ route: '/assets/*', headers: { 'Cache-Control': 'public, max-age=31536000, immutable' } })
+  ]));
+});
+
+test('a waiting service-worker update is offered and can be applied', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  const workerPath = resolve(process.cwd(), 'dist/sw.js');
+  const worker = readFileSync(workerPath, 'utf8');
+  try {
+    writeFileSync(workerPath, `${worker}\n// Playwright forces a byte-different update.`);
+    await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
+    await expect(page.getByRole('button', { name: 'Update now' })).toBeVisible();
+    await page.getByRole('button', { name: 'Update now' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Turn this week');
+  } finally {
+    writeFileSync(workerPath, worker);
+  }
 });

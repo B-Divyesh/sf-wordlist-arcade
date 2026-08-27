@@ -2,9 +2,13 @@
   "name": "Wordlist Arcade",
   "short_name": "Arcade",
   "description": "Six classroom vocabulary games from one list.",
-  "start_url": "/",
+  "start_url": "/?v=20260827-repair1",
   "display": "standalone",
   "background_color": "#f7f2e8",
   "theme_color": "#f7f2e8",
-  "icons": [{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "icons": [
+    {"src":"/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"/icons/icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
 }
