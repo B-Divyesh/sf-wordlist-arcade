@@ -1,60 +1,54 @@
-# Wordlist Arcade — adversarial review 5 handoff
+# Wordlist Arcade — polish round 5 handoff
 
 ## Outcome
 
-Review 5 is complete at candidate
-`9a3696c27d189dcad8400085d93dcc29baa93dae`.
+All round-5 findings are fixed and verified. The repair commit is
+`6766cf691e879d0e39d7b0cb01d84af5ef47eec8`, pushed to `main` and deployed to
+<https://wordlist-arcade.sociobot.in/> through the static work order (Azure
+deployment `302146b2-0297-43a1-9d38-073ff25b1148`).
 
-**Verdict: FAIL.** The full report is in `.factory/review-5.md`. No product code
-was changed.
+The app now proves real draft save/reload/clear behavior, hash-fragment privacy,
+lesson-file locality, absence of student-data fields and grading records, and
+the exact supported Node floor. Demo toolbar controls name their result, legal
+contact links identify their external destination, and demo class links remain
+inside `demo:` storage when returning to the chooser.
 
-Two findings are blocking:
+## Verification
 
-- `F-5-1 / F-04.17`: the local-device test seeds storage itself instead of
-  proving that a typed real draft is saved and restored.
-- `F-5-2 / F-04.21`: the privacy statement that URL fragments are not sent to
-  the server lacks a registered request-level assertion.
+- Fresh no-local clone: `/tmp/wordlist-arcade-polish5-final.c0dNgW`.
+  `npm ci` passed. Every one of the 26 exact `.factory/claims.json` commands
+  passed. Browser claims produced 50 desktop/mobile passes; `node-compat`
+  type-checked and built with Node.js 20.19.0.
+- Fresh-clone `npm test`: 11 Vitest tests and 76 Playwright passes, with two
+  intended desktop-only skips. `npm run build` produced `dist/` with 35.37 kB
+  raw / 11.75 kB gzip entry JS and 15.50 kB raw / 4.27 kB gzip CSS.
+- Live claims: 50/50 passed with `PLAYWRIGHT_BASE_URL` set to the production
+  URL. Live route/mobile/Axe sweep: 20/20 passed, with two intended skips.
+- `verify-url.sh` cold-loaded root and demo with zero console errors, one h1,
+  `lang=en`, main landmarks, alt text, and named buttons. Screenshots and JSON
+  reports are in `.factory/evidence/polish-5/live/`.
+- Live `/not-a-real-route` returns 404 with designed recovery UI and complete
+  Open Graph URL. The manifest has `application/manifest+json`; live headers
+  contain CSP, frame denial, nosniff, and no-referrer.
+- Lighthouse mobile-style run on production: Performance 100, Accessibility
+  100, Best Practices 100, SEO 100; FCP 1.0s, LCP 1.1s, TBT 10ms, CLS 0.
 
-Six additional findings cover lesson-file privacy, child-data and no-grading
-claims, the README Node-version claim, two noun-only toolbar buttons, and
-unlabelled external contact links.
-
-## Verification performed
-
-- Cold production reads in fresh 390×844 and 1440×1000 Chromium contexts.
-- One-click demo, realistic sample, banner, Reset, Start for real, browser Back,
-  real/demo storage isolation, keyboard entry, reduced motion, 200% text, and
-  offline reload checks.
-- Every exact command in `.factory/claims.json` from no-local clone
-  `/tmp/wordlist-arcade-review5.zRp5IU`: 21/21 commands and 42/42 desktop/mobile
-  executions returned success.
-- `npm test` in that clone: 10 unit tests and 68 applicable browser tests
-  passed; two intended project skips.
-- `npm run build`: passed and produced `dist/`; entry JavaScript is 34,998
-  bytes raw and 11.66 kB gzip.
-- Production claim sweep: 42/42 passed.
-- Production non-claim route/accessibility sweep: 22 passed, two intended
-  desktop-only skips.
-- `/opt/fleet/lib/verify-url.sh` passed root and demo with no console errors,
-  missing alt text, or unnamed buttons.
-- Route metadata, unknown-route 404, internal/external destinations, security
-  headers, manifest MIME, and exact live/build asset hashes were checked.
-- All earlier reviews, polish reports, verification reports, and the previous
-  handoff were rechecked finding by finding.
-
-## How to repeat
+## Repeat locally
 
 ```sh
 npm ci
 npm test
 npm run build
-PLAYWRIGHT_BASE_URL=https://wordlist-arcade.sociobot.in npx playwright test --grep '@claim:' --workers=2
+node -e "for (const c of require('./.factory/claims.json')) console.log(c.test)"
 ```
 
-Run each `test` string in `.factory/claims.json` separately from a no-local
-clone to repeat the strict claim audit.
+Run each printed claim command separately from a fresh clone. For production:
 
-## Work left
+```sh
+PLAYWRIGHT_BASE_URL=https://wordlist-arcade.sociobot.in npm run test:claims -- --grep '@claim:' --workers=2
+```
 
-Implement and register the concrete fixes in `F-5-1` through `F-5-8`, then
-repeat the entire review from fresh browser contexts and a new clean clone.
+## Remaining work
+
+None. The artifact remains a Vite + TypeScript static web app deployed from
+`dist/`.
