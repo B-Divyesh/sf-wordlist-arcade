@@ -11,7 +11,49 @@
     "claim": "Make six vocabulary games",
     "where": "landing headline and how-to section",
     "test": "npm run test:claims -- --grep @claim:six-games",
-    "sandbox": "fresh demo context opens the game shelf and asserts all six modes are enabled"
+    "sandbox": "fresh demo context opens every mode, performs an interaction, and verifies three accepted 60-character terms also open every game"
+  },
+  {
+    "id": "match-up-play",
+    "claim": "Connect each word to its meaning",
+    "where": "Match up game card",
+    "test": "npm run test:claims -- --grep @claim:match-up-play",
+    "sandbox": "fresh demo context matches a displayed word and meaning, then asserts the pair is confirmed"
+  },
+  {
+    "id": "word-strike-play",
+    "claim": "Hit the right word before moving on",
+    "where": "Word strike game card",
+    "test": "npm run test:claims -- --grep @claim:word-strike-play",
+    "sandbox": "fresh demo context chooses the displayed correct word and asserts the game confirms it"
+  },
+  {
+    "id": "anagram-play",
+    "claim": "Unscramble the word from its clue",
+    "where": "Anagram game card",
+    "test": "npm run test:claims -- --grep @claim:anagram-play",
+    "sandbox": "fresh demo context submits the answer to a displayed clue and asserts it advances"
+  },
+  {
+    "id": "word-reveal-play",
+    "claim": "Reveal letters without using six misses",
+    "where": "Word reveal game card",
+    "test": "npm run test:claims -- --grep @claim:word-reveal-play",
+    "sandbox": "fresh demo context chooses a displayed correct letter and asserts it is revealed before six misses"
+  },
+  {
+    "id": "memory-play",
+    "claim": "Find every hidden word-and-meaning pair",
+    "where": "Memory grid game card",
+    "test": "npm run test:claims -- --grep @claim:memory-play",
+    "sandbox": "fresh demo context finds one word-and-meaning pair and asserts it stays visible"
+  },
+  {
+    "id": "quiz-race-play",
+    "claim": "Answer up to five multiple-choice clues",
+    "where": "Quiz race game card",
+    "test": "npm run test:claims -- --grep @claim:quiz-race-play",
+    "sandbox": "fresh demo context verifies five questions for six pairs and advances after a correct answer"
   },
   {
     "id": "free-to-use",
@@ -82,6 +124,13 @@
     "where": "privacy notice and README",
     "test": "npm run test:claims -- --grep @claim:no-tracking",
     "sandbox": "fresh demo context records the complete sample flow and asserts all runtime requests, scripts, frames, and storage are first-party"
+  },
+  {
+    "id": "no-cookies",
+    "claim": "No cookies are used",
+    "where": "privacy notice",
+    "test": "npm run test:claims -- --grep @claim:no-cookies",
+    "sandbox": "fresh demo context records every response header and asserts the browser cookie jar stays empty through the game flow"
   },
   {
     "id": "offline-demo",

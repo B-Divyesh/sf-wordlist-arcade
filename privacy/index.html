@@ -8,17 +8,25 @@
     <link rel="canonical" href="https://wordlist-arcade.sociobot.in/privacy/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <meta property="og:type" content="website" /><meta property="og:title" content="Privacy — Wordlist Arcade" /><meta property="og:description" content="Learn how Wordlist Arcade stores vocabulary lists and shared game links." /><meta property="og:url" content="https://wordlist-arcade.sociobot.in/privacy/" /><meta property="og:image" content="https://wordlist-arcade.sociobot.in/assets/word-machine-social.jpg" />
-    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="Privacy — Wordlist Arcade" /><meta name="twitter:description" content="Learn how Wordlist Arcade stores vocabulary lists and shared game links." /><meta name="twitter:image" content="https://wordlist-arcade.sociobot.in/assets/word-machine-social.jpg" />
+    <link rel="stylesheet" href="/static-shell.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Privacy — Wordlist Arcade" />
+    <meta property="og:description" content="Learn how Wordlist Arcade stores vocabulary lists and shared game links." />
+    <meta property="og:url" content="https://wordlist-arcade.sociobot.in/privacy/" />
+    <meta property="og:image" content="https://wordlist-arcade.sociobot.in/assets/word-machine-social.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Privacy — Wordlist Arcade" />
+    <meta name="twitter:description" content="Learn how Wordlist Arcade stores vocabulary lists and shared game links." />
+    <meta name="twitter:image" content="https://wordlist-arcade.sociobot.in/assets/word-machine-social.jpg" />
     <title>Privacy — Wordlist Arcade</title>
-    <style>
-      :root{font:16px/1.6 Verdana,sans-serif;color:#17211b;background:#f7f2e8}*{box-sizing:border-box}body{margin:0}.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:#17211b;color:#fff;padding:8px}header,main,footer{width:min(720px,calc(100% - 32px));margin:auto}header{padding:24px 0}main{padding:36px 0 80px}h1,h2{font-family:"Trebuchet MS",sans-serif;line-height:1.15}h1{font-size:clamp(2.4rem,8vw,4rem)}h2{margin-top:36px}a{color:#103477;font-weight:700;min-width:44px;min-height:44px;display:inline-flex;align-items:center}.skip{min-width:0;min-height:0}.brand{text-decoration:none;color:#17211b}.nav,.footer-links{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.nav-links{display:flex;gap:4px;flex-wrap:wrap}.nav-links a,.footer-links a{padding:8px 4px}a:focus-visible{outline:4px solid #f3bf3b;outline-offset:3px}footer{border-top:2px solid #17211b;padding:24px 0;color:#526058;font-size:.9rem}@media(max-width:420px){.nav-links{font-size:.9rem}}
-    </style>
   </head>
   <body>
-    <a class="skip" href="#main">Skip to main content</a>
-    <header><nav class="nav" aria-label="Main navigation"><a class="brand" href="/">◆ Wordlist Arcade</a><span class="nav-links"><a href="/?demo=1">Demo</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></span></nav></header>
-    <main id="main">
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <header class="site-header"><nav class="nav shell" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
+      <div class="nav-links"><a class="text-link" href="/?demo=1">Demo</a><a class="text-link" href="/#make">Make a game</a><a class="text-link" href="/privacy/">Privacy</a></div>
+    </nav></header>
+    <main class="legal-content shell" id="main">
       <h1>Privacy for Wordlist Arcade</h1>
       <p><strong>Last updated: 28 August 2026.</strong></p>
       <p>Wordlist Arcade is designed so we do not need your identity or your students’ data.</p>
@@ -27,7 +35,7 @@
       <h2>What is inside a shared link</h2>
       <p>When you copy a class link, the list name, words, and meanings are compressed into the part of the URL after the <code>#</code>. Browsers do not send that hash fragment to our web server. Anyone with the link can read and play the list. Do not put names, grades, student details, or confidential material in a list.</p>
       <h2>Lesson files</h2>
-      <p>When you download or share a lesson file, it contains the same list name, words, and meanings. It stays on your device until you choose a person, app, or location to send it to. Importing a lesson file reads it in this browser only.</p>
+      <p>When you download a lesson file, it contains the same list name, words, and meanings. It stays on your device until you choose a person, app, or location to send it to. Importing a lesson file reads it in this browser only.</p>
       <h2>What we collect</h2>
       <p>No account, cookies, advertising trackers, analytics scripts, or third-party runtime services are used. Hosting may create short-lived server logs for security and reliable delivery. These logs can include an IP address, request time, and browser information.</p>
       <h2>Children</h2>
@@ -35,6 +43,9 @@
       <h2>Questions</h2>
       <p>For privacy questions, contact the site operator through <a href="https://sociobot.in">Sociobot</a>. You can return to <a href="/">Wordlist Arcade</a> at any time.</p>
     </main>
-    <footer><span>Wordlist Arcade · Built by Param Factory · 20260828-polish2-r2</span><span class="footer-links"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></span></footer>
+    <footer class="site-footer"><div class="shell footer-inner">
+      <p><strong>Wordlist Arcade</strong> makes classroom vocabulary games. Built by Param Factory · 20260828-polish3-r3</p>
+      <div class="footer-links"><a class="text-link" href="/?demo=1">Demo</a><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
+    </div></footer>
   </body>
 </html>

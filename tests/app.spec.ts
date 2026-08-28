@@ -10,6 +10,21 @@ adaptation — a feature that helps a living thing survive
 predator — an animal that hunts other animals
 camouflage — colors or shapes that help something hide`;
 
+const samplePairs = [
+  ['photosynthesis', 'how plants use light to make food'],
+  ['habitat', 'the natural home of a plant or animal'],
+  ['nocturnal', 'active during the night'],
+  ['adaptation', 'a feature that helps a living thing survive'],
+  ['predator', 'an animal that hunts other animals'],
+  ['camouflage', 'colors or shapes that help something hide']
+] as const;
+
+function answerForPrompt(prompt: string, pairs: ReadonlyArray<readonly [string, string]> = samplePairs): string {
+  const pair = pairs.find(([, meaning]) => prompt.includes(meaning));
+  if (!pair) throw new Error(`Could not find an answer for: ${prompt}`);
+  return pair[0];
+}
+
 function maximumLowCompressibilityList(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let seed = 2463534242;
@@ -76,6 +91,19 @@ test('legal pages and the static 404 page keep the accessible site shell', async
   }
 });
 
+test('root, demo, legal, and 404 routes share one navigation and footer skeleton', async ({ page }) => {
+  const normalize = (value: string | null) => (value || '').replace(/\s+/g, '');
+  const expectedHeader = 'WordlistArcadeDemoMakeagamePrivacy';
+  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish3-r3DemoPrivacyTerms';
+  for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
+    await page.goto(path);
+    expect(normalize(await page.locator('header nav[aria-label="Main navigation"]').textContent())).toBe(expectedHeader);
+    expect(normalize(await page.locator('footer.site-footer').textContent())).toBe(expectedFooter);
+  }
+  await page.goto('/?demo=1');
+  expect(normalize(await page.locator('header nav[aria-label="Main navigation"]').textContent())).toBe(expectedHeader);
+});
+
 test('mobile controls meet the 44 pixel target on every site shell', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile target-size check');
   for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
@@ -137,6 +165,10 @@ test('mobile layout does not overflow horizontally', async ({ page }, testInfo) 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await expect(page.locator('#share-game span')).toHaveText('Copy link');
+  await expect(page.locator('#share-game span')).toBeVisible();
+  await expect(page.locator('#fullscreen span')).toHaveText('Fullscreen');
+  await expect(page.locator('#fullscreen span')).toBeVisible();
   await page.getByRole('button', { name: /Games/ }).click();
   await page.getByRole('button', { name: 'Memory grid' }).click();
   await expect(page.locator('.memory-grid')).toBeVisible();
@@ -165,7 +197,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
   await expect(page.getByText('30 pairs ready. Choose any game.')).toBeVisible();
   await expect(page.getByText(/complete class link is .*characters/i)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Copy class link' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Download lesson' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Download lesson file' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Quiz race' })).toBeEnabled();
 
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -187,7 +219,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
   }
 
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download lesson' }).click();
+  await page.getByRole('button', { name: 'Download lesson file' }).click();
   const download = await downloadPromise;
   const artifactPath = await download.path();
   expect(artifactPath).not.toBeNull();
@@ -208,7 +240,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=20260828-polish2-r2');
+  expect(manifest.start_url).toContain('?v=20260828-polish3-r3');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -216,7 +248,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260828-polish2-r2'");
+  expect(worker).toContain("const VERSION = '20260828-polish3-r3'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -252,12 +284,136 @@ test('@claim:sample-demo opens a ready-to-play sample game', async ({ page }) =>
   await expect(page.getByText('Demo — sample data, nothing is saved.')).toBeVisible();
 });
 
-test('@claim:six-games makes all six games from one list', async ({ page }) => {
+test('@claim:six-games opens and uses all six games for a valid boundary list', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('pageerror', error => consoleErrors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+  const boundaryPairs = [
+    ['a'.repeat(60), 'first boundary meaning'],
+    ['b'.repeat(60), 'second boundary meaning'],
+    ['c'.repeat(60), 'third boundary meaning']
+  ] as const;
+  const boundaryList = boundaryPairs.map(([term, meaning]) => `${term} — ${meaning}`).join('\n');
+
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /Games/ }).click();
-  for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race']) {
-    await expect(page.getByRole('button', { name })).toBeEnabled();
+  await page.getByLabel('Words and meanings').fill(boundaryList);
+  await expect(page.getByText('3 pairs ready. Choose any game.')).toBeVisible();
+
+  for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race'] as const) {
+    await page.getByRole('button', { name }).click();
+    await expect(page.locator('.game-title h1')).toHaveText(name);
+    await expect(page.locator('#game-stage')).toBeVisible();
+
+    if (name === 'Match up') {
+      await page.locator('[data-side="term"]').first().click();
+      await expect(page.getByText('Now choose from the other side.')).toBeVisible();
+    }
+    if (name === 'Word strike') {
+      await page.locator('.choice').first().click();
+      await expect(page.locator('.live-message')).not.toBeEmpty();
+    }
+    if (name === 'Anagram') {
+      const answer = answerForPrompt(await page.locator('.prompt').textContent() || '', boundaryPairs);
+      await page.getByLabel('Your answer').fill(answer);
+      await page.getByRole('button', { name: 'Check word' }).click();
+      await expect(page.getByText('Correct! Next word.')).toBeVisible();
+    }
+    if (name === 'Word reveal') {
+      const answer = answerForPrompt(await page.locator('.prompt').textContent() || '', boundaryPairs);
+      await page.getByLabel('Solve the whole word').fill(answer);
+      await page.getByRole('button', { name: 'Solve' }).click();
+      await expect(page.getByText('You solved the whole word!')).toBeVisible();
+    }
+    if (name === 'Memory grid') {
+      await page.getByRole('button', { name: 'Hidden card' }).first().click();
+      await expect(page.getByText('Choose one more card.')).toBeVisible();
+    }
+    if (name === 'Quiz race') {
+      await page.locator('.choice').first().click();
+      await expect(page.locator('.live-message')).not.toBeEmpty();
+    }
+    await page.getByRole('button', { name: /Games/ }).click();
   }
+
+  expect(consoleErrors).toEqual([]);
+});
+
+test('@claim:match-up-play confirms a matching word and meaning', async ({ page }) => {
+  await page.goto('/?demo=1');
+  const term = await page.locator('[data-side="term"]').first().textContent();
+  const definition = samplePairs.find(([word]) => word === term?.trim())?.[1];
+  expect(definition).toBeTruthy();
+  await page.getByRole('button', { name: term!.trim(), exact: true }).click();
+  await page.getByRole('button', { name: definition!, exact: true }).click();
+  await expect(page.getByText('That pair fits!')).toBeVisible();
+});
+
+test('@claim:word-strike-play confirms the right word before the next turn', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Word strike' }).click();
+  const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
+  await page.getByRole('button', { name: answer, exact: true }).click();
+  await expect(page.getByText('Yes—that’s the one!')).toBeVisible();
+});
+
+test('@claim:anagram-play accepts the word for its displayed clue', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Anagram' }).click();
+  const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
+  await page.getByLabel('Your answer').fill(answer);
+  await page.getByRole('button', { name: 'Check word' }).click();
+  await expect(page.getByText('Correct! Next word.')).toBeVisible();
+});
+
+test('@claim:word-reveal-play reveals the solved word before six misses', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Word reveal' }).click();
+  const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
+  await page.getByLabel('Solve the whole word').fill(answer);
+  await page.getByRole('button', { name: 'Solve' }).click();
+  await expect(page.getByText('You solved the whole word!')).toBeVisible();
+  await expect(page.getByText('Misses 0/6')).toBeVisible();
+});
+
+test('@claim:memory-play keeps a found word-and-meaning pair visible', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Memory grid' }).click();
+  const first = page.getByRole('button', { name: 'Hidden card' }).first();
+  const firstIndex = await first.getAttribute('data-index');
+  await first.click();
+  const visibleText = await page.locator(`.memory-card[data-index="${firstIndex}"]`).textContent();
+  const matchedText = samplePairs.find(([term, meaning]) => visibleText?.includes(term) || visibleText?.includes(meaning));
+  expect(matchedText).toBeTruthy();
+
+  const cardIndexes = await page.locator('.memory-card').evaluateAll(cards => cards.map(card => card.getAttribute('data-index')));
+  let found = false;
+  for (const index of cardIndexes) {
+    if (!index || index === firstIndex) continue;
+    await page.locator(`.memory-card[data-index="${index}"]`).click();
+    if (await page.getByText('A match! Those cards stay open.').isVisible().catch(() => false)) {
+      found = true;
+      break;
+    }
+    await page.waitForTimeout(850);
+    await page.locator(`.memory-card[data-index="${firstIndex}"]`).click();
+  }
+  expect(found).toBe(true);
+  await expect(page.locator('.memory-card.matched')).toHaveCount(2);
+});
+
+test('@claim:quiz-race-play has up to five questions and advances after an answer', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Quiz race' }).click();
+  await expect(page.locator('.race-step')).toHaveCount(5);
+  const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
+  await page.getByRole('button', { name: answer, exact: true }).click();
+  await expect(page.getByText('Correct—move one step!')).toBeVisible();
 });
 
 test('@claim:free-to-use has no paywall in the sample flow', async ({ page }) => {
@@ -335,7 +491,7 @@ test('@claim:lesson-file restores every sample pair in a fresh context', async (
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /Games/ }).click();
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download lesson' }).click();
+  await page.getByRole('button', { name: 'Download lesson file' }).click();
   const artifact = await downloadPromise;
   const artifactPath = await artifact.path();
   expect(artifactPath).not.toBeNull();
@@ -375,6 +531,21 @@ test('@claim:no-tracking keeps the whole sample flow first-party', async ({ page
   await expect(page.locator('script[src^="http"], iframe, [src^="http"]')).toHaveCount(0);
   const keys = await page.evaluate(() => Object.keys(localStorage));
   expect(keys.every(key => key.startsWith('demo:'))).toBe(true);
+});
+
+test('@claim:no-cookies keeps the complete demo flow free of cookies and Set-Cookie headers', async ({ page, context }) => {
+  const setCookieHeaders: string[] = [];
+  page.on('response', response => {
+    const setCookie = response.headers()['set-cookie'];
+    if (setCookie) setCookieHeaders.push(setCookie);
+  });
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Quiz race' }).click();
+  const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
+  await page.getByRole('button', { name: answer, exact: true }).click();
+  expect(await context.cookies()).toEqual([]);
+  expect(setCookieHeaders).toEqual([]);
 });
 
 test('@claim:offline-demo reloads after the first demo visit', async ({ page, context }) => {

@@ -11,19 +11,20 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
   { id: 'anagram', name: 'Anagram', short: 'Unscramble the word from its clue.', color: '#f3bf3b' },
   { id: 'reveal', name: 'Word reveal', short: 'Reveal letters without using six misses.', color: '#18794e' },
   { id: 'memory', name: 'Memory grid', short: 'Find every hidden word-and-meaning pair.', color: '#1746a2' },
-  { id: 'race', name: 'Quiz race', short: 'Answer five quick multiple-choice clues.', color: '#d9d3f8' }
+  { id: 'race', name: 'Quiz race', short: 'Answer up to five multiple-choice clues.', color: '#d9d3f8' }
 ];
 
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish2-r2';
+const BUILD_ID = '20260828-polish3-r3';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
 let currentList: SharedList = { title: 'My vocabulary', pairs: [] };
 let currentGame: GameId | null = null;
 let waitingWorker: ServiceWorker | null = null;
+let gameRunId = 0;
 
 function isDemo(): boolean {
   return location.pathname === '/demo' || new URLSearchParams(location.search).get('demo') === '1';
@@ -121,6 +122,7 @@ function setupDemoBanner(): void {
 }
 
 function renderHome(prefill?: SharedList, notice = ''): void {
+  gameRunId += 1;
   currentGame = null;
   const stored = readLocal('wordlist-arcade-draft');
   const storedTitle = readLocal('wordlist-arcade-title') || 'My vocabulary';
@@ -151,11 +153,11 @@ function renderHome(prefill?: SharedList, notice = ''): void {
           <div class="field"><label for="list-title">List name <span class="label-help">Shown at the top of each game</span></label><input id="list-title" maxlength="80" value="${esc(list.title)}" autocomplete="off" /></div>
           <div class="field"><label for="wordlist">Words and meanings <span class="label-help">Example: nocturnal — active during the night</span></label><textarea id="wordlist" spellcheck="true" aria-describedby="parse-status">${esc(initialText)}</textarea></div>
           <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load sample list</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
-          <div class="status" id="parse-status" role="status" aria-live="polite">Add at least 3 pairs to unlock the games.</div>
+          <div class="status" id="parse-status" role="status" aria-live="polite">Add 3 pairs to choose a game.</div>
           <section class="share-tools" aria-labelledby="share-tools-title">
             <h3 id="share-tools-title">Share a game with your class</h3>
             <p>Copy a class link. If your learning platform rejects a long link, download a lesson file.</p>
-            <div class="inline-actions"><button class="button small" id="download-lesson" type="button" disabled>Download lesson</button><button class="button small" id="share-lesson" type="button" disabled>Share lesson</button><button class="button small" id="import-lesson" type="button">Import lesson</button><input class="sr-only" id="lesson-file" type="file" accept="application/json,.json" aria-label="Choose a Wordlist Arcade lesson file" /></div>
+            <div class="inline-actions"><button class="button small" id="download-lesson" type="button" disabled>Download lesson file</button><button class="button small" id="import-lesson" type="button">Import lesson</button><input class="sr-only" id="lesson-file" type="file" accept="application/json,.json" aria-label="Choose a Wordlist Arcade lesson file" /></div>
             <p class="share-limit" id="share-limit" hidden></p>
           </section>
           <p class="label-help">Use 3 to 30 pairs. Use a dash or colon between each word and meaning.</p>
@@ -177,7 +179,6 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   get<HTMLButtonElement>('#clear-draft').addEventListener('click', () => { textArea.value = ''; titleInput.value = 'My vocabulary'; removeLocal('wordlist-arcade-draft'); removeLocal('wordlist-arcade-title'); update(); textArea.focus(); });
   get<HTMLButtonElement>('#copy-list').addEventListener('click', () => copyLink('match'));
   get<HTMLButtonElement>('#download-lesson').addEventListener('click', downloadLesson);
-  get<HTMLButtonElement>('#share-lesson').addEventListener('click', () => { void shareLesson(); });
   const lessonFile = get<HTMLInputElement>('#lesson-file');
   get<HTMLButtonElement>('#import-lesson').addEventListener('click', () => lessonFile.click());
   lessonFile.addEventListener('change', () => { void importLesson(lessonFile); });
@@ -202,7 +203,8 @@ function updateMaker(title: string, raw: string): void {
     status.textContent = `${result.issues[0]} ${result.pairs.length} valid ${result.pairs.length === 1 ? 'pair' : 'pairs'} found.`;
     status.classList.add('error');
   } else if (result.pairs.length < 3) {
-    status.textContent = `Add ${3 - result.pairs.length} more ${3 - result.pairs.length === 1 ? 'pair' : 'pairs'} to unlock the games.`;
+    const needed = 3 - result.pairs.length;
+    status.textContent = `Add ${needed} ${needed === 1 ? 'pair' : 'pairs'} to choose a game.`;
   } else {
     status.textContent = `${result.pairs.length} pairs ready. Choose any game.`;
     status.classList.add('good');
@@ -212,11 +214,10 @@ function updateMaker(title: string, raw: string): void {
   const shareUrl = gameUrl('match');
   get<HTMLButtonElement>('#copy-list').disabled = !enabled;
   get<HTMLButtonElement>('#download-lesson').disabled = !enabled;
-  get<HTMLButtonElement>('#share-lesson').disabled = !enabled;
   const shareLimit = get<HTMLElement>('#share-limit');
   shareLimit.hidden = !enabled || shareUrl.length <= LONG_LINK_GUIDANCE;
   if (enabled && shareUrl.length > LONG_LINK_GUIDANCE) {
-    shareLimit.textContent = `This complete class link is ${shareUrl.length.toLocaleString()} characters. You can still copy it for browsers and tools that support long links. If an LMS or email tool rejects it, download or share the lesson file instead; importing it restores every pair.`;
+    shareLimit.textContent = `This complete class link is ${shareUrl.length.toLocaleString()} characters. Copy it where long links are accepted. Some learning platforms reject long links. If that happens, download the lesson file. Importing it restores every pair.`;
   }
 }
 
@@ -239,7 +240,7 @@ async function copyLink(game: GameId): Promise<void> {
   const url = gameUrl(game);
   try {
     await navigator.clipboard.writeText(url);
-    showToast(url.length > LONG_LINK_GUIDANCE ? 'Complete class link copied. If an LMS rejects it, send the lesson file instead.' : 'Class link copied. Anyone with the link can play.');
+    showToast(url.length > LONG_LINK_GUIDANCE ? 'Complete class link copied. Some learning platforms reject long links. Download the lesson file if that happens.' : 'Class link copied. Anyone with the link can play.');
   } catch {
     window.prompt('Copy this class link:', url);
   }
@@ -258,21 +259,6 @@ function downloadLesson(): void {
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   showToast('Lesson downloaded. Import it in Wordlist Arcade to restore every pair.');
-}
-
-async function shareLesson(): Promise<void> {
-  const file = lessonFile();
-  const data = { title: `${currentList.title} — Wordlist Arcade lesson`, text: 'Import this lesson file in Wordlist Arcade to play all six games.', files: [file] };
-  try {
-    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-      await navigator.share(data);
-      showToast('Lesson ready to share. It contains every pair.');
-      return;
-    }
-    downloadLesson();
-  } catch (error) {
-    if ((error as DOMException).name !== 'AbortError') showToast('Could not open sharing here. The lesson can still be downloaded.');
-  }
 }
 
 async function importLesson(input: HTMLInputElement): Promise<void> {
@@ -320,16 +306,12 @@ function openGame(game: GameId): void {
 }
 
 function playChrome(game: (typeof games)[number]): string {
-  return `<div class="play-page">${demoBanner()}<header class="play-header">
-    <nav class="play-site-nav shell" aria-label="Main navigation">
-      <a class="brand" href="/" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
-      <a class="text-link" href="/privacy/">Privacy</a>
-    </nav>
+  return `<div class="play-page">${header()}${demoBanner()}<section class="play-toolbar" aria-label="Game area">
     <nav class="play-nav shell" aria-label="Game controls">
     <button class="button small" id="back-home" type="button">${icon('back')}<span>Games</span></button>
     <div class="game-title"><span>${esc(currentList.title)}</span><h1 tabindex="-1">${game.name}</h1></div>
-    <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span class="fullscreen-label">Share</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span class="fullscreen-label">Fullscreen</span></button></div>
-  </nav></header><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main>${footer()}</div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
+    <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span>Copy link</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span>Fullscreen</span></button></div>
+  </nav></section><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main>${footer()}</div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 }
 
 function setupPlayControls(game: GameId): void {
@@ -361,17 +343,18 @@ function finishGame(game: GameId, score: number, total: number, message: string)
 function renderGame(gameId: GameId): void {
   const game = games.find(item => item.id === gameId);
   if (!game) return;
+  const runId = ++gameRunId;
   currentGame = gameId;
   app.innerHTML = playChrome(game);
   setupPlayControls(gameId);
   setupDemoBanner();
   if (waitingWorker) showUpdateToast();
   if (gameId === 'match') playMatch();
-  if (gameId === 'strike') playStrike();
+  if (gameId === 'strike') playStrike(runId);
   if (gameId === 'anagram') playAnagram();
-  if (gameId === 'reveal') playReveal();
-  if (gameId === 'memory') playMemory();
-  if (gameId === 'race') playRace();
+  if (gameId === 'reveal') playReveal(runId);
+  if (gameId === 'memory') playMemory(runId);
+  if (gameId === 'race') playRace(runId);
 }
 
 function playMatch(): void {
@@ -407,7 +390,7 @@ function playMatch(): void {
   draw();
 }
 
-function playStrike(): void {
+function playStrike(runId: number): void {
   const queue = shuffle(currentList.pairs);
   let index = 0;
   let score = 0;
@@ -426,6 +409,7 @@ function playStrike(): void {
       if (correct) score += 1;
       draw(correct ? 'Yes—that’s the one!' : `The answer is “${pair.term}”.`, answer);
       window.setTimeout(() => {
+        if (gameRunId !== runId) return;
         index += 1; locked = false;
         if (index >= queue.length) finishGame('strike', score, queue.length, 'You cleared the target field.'); else draw();
       }, 700);
@@ -435,7 +419,9 @@ function playStrike(): void {
 }
 
 function playAnagram(): void {
-  const queue = shuffle(currentList.pairs).filter(pair => pair.term.length <= 32);
+  // The parser accepts terms up to 60 characters. Anagram must honor that
+  // contract, including shared links and imported lessons at the boundary.
+  const queue = shuffle(currentList.pairs);
   let index = 0;
   let score = 0;
   const stage = get<HTMLElement>('#game-stage');
@@ -461,7 +447,7 @@ function playAnagram(): void {
   draw();
 }
 
-function playReveal(): void {
+function playReveal(runId: number): void {
   const queue = shuffle(currentList.pairs);
   let index = 0;
   let score = 0;
@@ -478,6 +464,7 @@ function playReveal(): void {
     stage.innerHTML = `<h2>Reveal the word</h2><p class="prompt">Clue: ${esc(pair.definition)}</p><p class="word-rail"><span class="sr-only">Word: ${solved ? esc(pair.term) : 'partly hidden'}</span><span aria-hidden="true">${Array.from(upper).map(char => `<span class="word-slot">${/\p{L}/u.test(char) ? (guesses.has(char) ? esc(char) : '') : esc(char)}</span>`).join('')}</span></p><div class="letter-grid" role="group" aria-label="Choose a letter">${alphabet.map(letter => `<button class="letter-button" data-letter="${letter}" ${guesses.has(letter) || solved || wrong >= 6 ? 'disabled' : ''}>${letter}</button>`).join('')}</div><form class="answer-form reveal-answer" id="reveal-form"><label class="sr-only" for="reveal-answer">Solve the whole word</label><input id="reveal-answer" autocomplete="off" placeholder="Or solve the whole word" ${solved || wrong >= 6 ? 'disabled' : ''} /><button class="button" type="submit" ${solved || wrong >= 6 ? 'disabled' : ''}>Solve</button></form><p class="live-message ${kind}" role="status">${esc(message || `${6 - wrong} misses left`)}</p>`;
     if (solved || wrong >= 6) {
       window.setTimeout(() => {
+        if (gameRunId !== runId) return;
         if (solved) score += 1;
         index += 1; guesses = new Set();
         if (index >= queue.length) finishGame('reveal', score, queue.length, 'The word rail is complete.'); else draw(solved ? 'Word revealed!' : `The word was “${pair.term}”.`, solved ? 'good' : 'bad');
@@ -501,7 +488,7 @@ function playReveal(): void {
   draw();
 }
 
-function playMemory(): void {
+function playMemory(runId: number): void {
   const pairs = shuffle(currentList.pairs).slice(0, 6).map((pair, id) => ({ ...pair, id }));
   const cards = shuffle(pairs.flatMap(pair => [
     { id: `${pair.id}-term`, pairId: pair.id, kind: 'Word', text: pair.term },
@@ -531,14 +518,17 @@ function playMemory(): void {
         draw('A match! Those cards stay open.');
       } else {
         locked = true; draw('Not a pair. Remember their places.');
-        window.setTimeout(() => { open.delete(firstCard.id); open.delete(card.id); locked = false; draw(); }, 800);
+        window.setTimeout(() => {
+          if (gameRunId !== runId) return;
+          open.delete(firstCard.id); open.delete(card.id); locked = false; draw();
+        }, 800);
       }
     }));
   };
   draw();
 }
 
-function playRace(): void {
+function playRace(runId: number): void {
   const queue = shuffle(currentList.pairs).slice(0, Math.min(5, currentList.pairs.length));
   let index = 0;
   let score = 0;
@@ -556,7 +546,11 @@ function playRace(): void {
       const correct = normalized(answer) === normalized(pair.term);
       if (correct) score += 1;
       draw(correct ? 'Correct—move one step!' : `The answer is “${pair.term}”. Keep racing!`, answer);
-      window.setTimeout(() => { index += 1; locked = false; if (index >= queue.length) finishGame('race', score, queue.length, 'You reached the finish line.'); else draw(); }, 750);
+      window.setTimeout(() => {
+        if (gameRunId !== runId) return;
+        index += 1; locked = false;
+        if (index >= queue.length) finishGame('race', score, queue.length, 'You reached the finish line.'); else draw();
+      }, 750);
     }));
   };
   draw();
@@ -584,6 +578,7 @@ function announceRoute(label: string): void {
 }
 
 function renderNotFound(): void {
+  gameRunId += 1;
   currentGame = null;
   app.innerHTML = `${header()}<main class="not-found shell" id="main"><p class="eyebrow">Page missing</p><h1>This page was not found</h1><p>The address may be incomplete. Start a new vocabulary game from the home page.</p><a class="button primary" href="/">Go to Wordlist Arcade</a></main>${footer()}`;
   setRouteMeta('Page not found — Wordlist Arcade', 'This Wordlist Arcade page was not found.');

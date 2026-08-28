@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-const APP_VERSION = '20260828-polish2-r2';
+const APP_VERSION = '20260828-polish3-r3';
 
 function pwaServiceWorker() {
   return {
@@ -27,6 +27,7 @@ function pwaServiceWorker() {
         '/?demo=1',
         '/manifest.webmanifest',
         '/favicon.svg',
+        '/static-shell.css',
         '/icons/icon-192.png',
         '/icons/icon-512.png',
         '/icons/icon-maskable-512.png',
