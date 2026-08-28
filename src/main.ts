@@ -72,14 +72,14 @@ function icon(name: 'back' | 'share' | 'screen' | 'refresh'): string {
 function header(): string {
   return `<header class="site-header"><nav class="nav shell" aria-label="Main navigation">
     <a class="brand" href="/" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
-    <div class="nav-links"><a class="text-link" href="/demo">Demo</a><a class="text-link" href="/#make">Make a game</a><a class="text-link" href="/privacy/">Privacy</a></div>
+    <div class="nav-links"><a class="text-link" href="/?demo=1">Demo</a><a class="text-link" href="/#make">Make a game</a><a class="text-link" href="/privacy/">Privacy</a></div>
   </nav></header>`;
 }
 
 function footer(): string {
   return `<footer class="site-footer"><div class="shell footer-inner">
     <p><strong>Wordlist Arcade</strong> makes classroom vocabulary games. Hero artwork was generated for this project. Built by Param Factory · ${BUILD_ID}</p>
-    <div class="footer-links"><a class="text-link" href="/demo">Demo</a><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
+    <div class="footer-links"><a class="text-link" href="/?demo=1">Demo</a><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
   </div></footer>`;
 }
 
@@ -115,7 +115,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
           <p class="eyebrow">Vocabulary games for class</p>
           <h1>Make six vocabulary games</h1>
           <p>For language and primary teachers who need a quick activity from this week’s words.</p>
-          <div class="hero-actions"><a class="button primary" href="#make">Paste your word pairs</a><a class="button" href="/demo">Try it with sample data</a></div>
+          <div class="hero-actions"><a class="button primary" href="#make">Paste your word pairs</a><a class="button" href="/?demo=1">Try it with sample data</a></div>
           <p class="action-note">Open a ready-to-play photosynthesis game.</p>
           <ul class="plain-facts"><li>Free to use</li><li>No account</li><li>Lists stay on this device</li></ul>
         </div>
