@@ -4,7 +4,11 @@ const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  // The update regression temporarily swaps the built service worker. Keep
+  // this single-file suite isolated so another browser never loads that
+  // transient worker while an unrelated route or cache assertion is running.
+  workers: 1,
+  fullyParallel: false,
   retries: 0,
   reporter: 'line',
   use: {
