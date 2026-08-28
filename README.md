@@ -10,7 +10,7 @@ Live site: <https://wordlist-arcade.sociobot.in>
 ## Use it
 
 1. Paste one word and meaning on each line.
-2. Choose Match up, Word strike, Anagram lab, Word reveal, Memory grid, or Quiz race.
+2. Choose Match up, Word strike, Anagram, Word reveal, Memory grid, or Quiz race.
 3. Play together or copy a class link.
 
 Use the sample at <https://wordlist-arcade.sociobot.in/?demo=1>. It opens a

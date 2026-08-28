@@ -8,7 +8,7 @@ const LONG_LINK_GUIDANCE = 1900;
 const games: { id: GameId; name: string; short: string; color: string }[] = [
   { id: 'match', name: 'Match up', short: 'Connect each word to its meaning.', color: '#d9d3f8' },
   { id: 'strike', name: 'Word strike', short: 'Hit the right word before moving on.', color: '#c83b2d' },
-  { id: 'anagram', name: 'Anagram lab', short: 'Unscramble the word from its clue.', color: '#f3bf3b' },
+  { id: 'anagram', name: 'Anagram', short: 'Unscramble the word from its clue.', color: '#f3bf3b' },
   { id: 'reveal', name: 'Word reveal', short: 'Reveal letters without using six misses.', color: '#18794e' },
   { id: 'memory', name: 'Memory grid', short: 'Find every hidden word-and-meaning pair.', color: '#1746a2' },
   { id: 'race', name: 'Quiz race', short: 'Answer five quick multiple-choice clues.', color: '#d9d3f8' }
@@ -17,7 +17,7 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish1';
+const BUILD_ID = '20260828-polish1-r1';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
@@ -50,6 +50,14 @@ function clearDemo(): void {
     localStorage.removeItem('demo:wordlist-arcade-draft');
     localStorage.removeItem('demo:wordlist-arcade-title');
   } catch { /* Nothing to clear. */ }
+}
+
+function leaveDemo(): void {
+  clearDemo();
+  // Do not carry the sample list into the normal maker through in-memory
+  // state. Demo data must disappear as soon as someone starts for real.
+  currentList = { title: 'My vocabulary', pairs: [] };
+  currentGame = null;
 }
 
 const esc = (value: string) => value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char));
@@ -97,7 +105,11 @@ function setupDemoBanner(): void {
     writeLocal(storageKey('wordlist-arcade-title'), DEMO_TITLE);
     if (currentGame) renderGame(currentGame); else renderHome(DEMO_LIST, 'Demo reset. The sample game is ready.');
   });
-  document.querySelector<HTMLAnchorElement>('#start-real')?.addEventListener('click', () => clearDemo());
+  document.querySelector<HTMLAnchorElement>('#start-real')?.addEventListener('click', event => {
+    event.preventDefault();
+    leaveDemo();
+    navigate('/');
+  });
 }
 
 function renderHome(prefill?: SharedList, notice = ''): void {
@@ -114,7 +126,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
         <div class="hero-copy">
           <p class="eyebrow">Vocabulary games for class</p>
           <h1>Make six vocabulary games</h1>
-          <p>For language and primary teachers who need a quick activity from this week’s words.</p>
+          <p>For language, ESL, and primary teachers who need a quick activity from this week’s words.</p>
           <div class="hero-actions"><a class="button primary" href="#make">Paste your word pairs</a><a class="button" href="/?demo=1">Try it with sample data</a></div>
           <p class="action-note">Open a ready-to-play photosynthesis game.</p>
           <ul class="plain-facts"><li>Free to use</li><li>No account</li><li>Lists stay on this device</li></ul>
@@ -141,7 +153,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
           <p class="label-help">Use 3 to 30 pairs. Put a dash, colon, equals sign, vertical bar, or tab between each word and meaning.</p>
         </div>
         <div class="game-shelf" aria-labelledby="shelf-title">
-          <div class="shelf-heading"><h2 id="shelf-title">Your game shelf</h2><span class="count-pill" id="pair-count">0 pairs</span></div>
+          <div class="shelf-heading"><h2 id="shelf-title">Choose a game</h2><span class="count-pill" id="pair-count">0 pairs</span></div>
           <div class="game-grid">${games.map((game, index) => `<button class="game-card" type="button" data-game="${game.id}" style="--shape-color:${game.color}" disabled><span class="game-number">${index + 1}</span><strong>${game.name}</strong><span>${game.short}</span></button>`).join('')}</div>
         </div>
       </div></section>
@@ -538,11 +550,13 @@ function playRace(): void {
 }
 
 function setRouteMeta(title: string, description: string, canonicalPath = location.pathname): void {
+  const canonicalUrl = `${location.origin}${canonicalPath}`;
   document.title = title;
   document.querySelector('meta[name="description"]')?.setAttribute('content', description);
-  document.querySelector('link[rel="canonical"]')?.setAttribute('href', `${location.origin}${canonicalPath}`);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
   document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
   document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
+  document.querySelector('meta[property="og:url"]')?.setAttribute('content', canonicalUrl);
   document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', title);
   document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
 }
@@ -558,7 +572,7 @@ function announceRoute(label: string): void {
 
 function renderNotFound(): void {
   currentGame = null;
-  app.innerHTML = `${header()}<main class="not-found shell" id="main"><p class="eyebrow">Missing game card</p><h1>This page was not found</h1><p>The address may be incomplete. Start a new vocabulary game from the home page.</p><a class="button primary" href="/">Go to Wordlist Arcade</a></main>${footer()}`;
+  app.innerHTML = `${header()}<main class="not-found shell" id="main"><p class="eyebrow">Page missing</p><h1>This page was not found</h1><p>The address may be incomplete. Start a new vocabulary game from the home page.</p><a class="button primary" href="/">Go to Wordlist Arcade</a></main>${footer()}`;
   setRouteMeta('Page not found — Wordlist Arcade', 'This Wordlist Arcade page was not found.');
   announceRoute('This page was not found');
 }
@@ -605,13 +619,13 @@ function route(): void {
     currentList = restoreDemoList();
     if (legacyHash === 'make') {
       renderHome(currentList);
-      setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.');
+      setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.', '/demo');
       announceRoute('Demo: make vocabulary games');
       window.requestAnimationFrame(() => document.querySelector('#make')?.scrollIntoView());
       return;
     }
     renderGame('match');
-    setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.');
+    setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.', '/demo');
     announceRoute('Demo: Match up');
     return;
   }

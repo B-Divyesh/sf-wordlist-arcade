@@ -56,6 +56,27 @@
     "sandbox": "fresh demo context copies a link, asserts its data stays after #, and opens it in a fresh context"
   },
   {
+    "id": "lesson-file",
+    "claim": "Download a lesson file that restores every pair",
+    "where": "maker sharing help and README",
+    "test": "npm run test:claims -- --grep @claim:lesson-file",
+    "sandbox": "fresh demo context downloads the sample lesson, imports it in a second fresh context, and asserts the exact sample rows return"
+  },
+  {
+    "id": "fullscreen",
+    "claim": "Play games fullscreen",
+    "where": "game controls",
+    "test": "npm run test:claims -- --grep @claim:fullscreen",
+    "sandbox": "fresh demo context invokes the browser fullscreen API from the labelled game control"
+  },
+  {
+    "id": "no-tracking",
+    "claim": "No advertising trackers, analytics scripts, or third-party runtime services",
+    "where": "privacy notice and README",
+    "test": "npm run test:claims -- --grep @claim:no-tracking",
+    "sandbox": "fresh demo context records the complete sample flow and asserts all runtime requests, scripts, frames, and storage are first-party"
+  },
+  {
     "id": "offline-demo",
     "claim": "Saved lists and opened game links still work offline",
     "where": "offline status message and README",
