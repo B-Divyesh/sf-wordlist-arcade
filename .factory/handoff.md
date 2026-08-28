@@ -54,6 +54,11 @@ Use `/?demo=1` or `/demo`. See `.factory/demo.md` for sample data, reset, and
 storage details. Static deployment remains Azure Static Web Apps; the generated
 `dist/` and `public/staticwebapp.config.json` are the deployment inputs.
 
+Repair commit `af14430294cd3034db8e8ec94b817fc5ec8e4493` was pushed to
+`origin/main`. This repository contains no deployment workflow or Azure
+credential configuration; deployment is therefore left to the factory's
+static-work-order release process, as required by the repository rules.
+
 ## Known gaps
 
 No known blocking review findings remain. The only verification limitation is
