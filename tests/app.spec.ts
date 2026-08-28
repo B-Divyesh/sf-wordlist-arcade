@@ -25,6 +25,26 @@ async function expectNoSeriousAxe(page: Page): Promise<void> {
   expect(results.violations.filter(item => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
 }
 
+async function expectNoAxeViolations(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+}
+
+async function expectTouchTargets(page: Page, selector = 'a:not(.skip):not(.skip-link), button'): Promise<void> {
+  const failures = await page.locator(selector).evaluateAll(elements => elements
+    .filter(element => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0;
+    })
+    .map(element => {
+      const box = element.getBoundingClientRect();
+      return { label: element.getAttribute('aria-label') || element.textContent?.trim(), width: box.width, height: box.height };
+    })
+    .filter(box => box.width < 44 || box.height < 44));
+  expect(failures).toEqual([]);
+}
+
 test('landing page is accessible and has no console errors', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -51,7 +71,16 @@ test('legal pages and the static 404 page keep the accessible site shell', async
     await expect(page.locator('main')).toHaveCount(1);
     await expect(page.getByRole('link', { name: 'Privacy' }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Terms' }).first()).toBeVisible();
+    await expectTouchTargets(page);
     await expectNoSeriousAxe(page);
+  }
+});
+
+test('mobile controls meet the 44 pixel target on every site shell', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'mobile target-size check');
+  for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
+    await page.goto(path);
+    await expectTouchTargets(page);
   }
 });
 
@@ -128,7 +157,7 @@ test('the production shell works offline after the first visit', async ({ page, 
   await context.setOffline(false);
 });
 
-test('the exact low-compressibility 30-pair boundary stays shareable and round-trips in fresh contexts', async ({ page, browser }) => {
+test('@claim:long-class-link keeps the exact 30-pair boundary copyable and restores every row', async ({ page, browser }) => {
   const longList = maximumLowCompressibilityList();
   await page.goto('/');
   await page.getByLabel('List name').fill('Maximum boundary lesson');
@@ -152,6 +181,7 @@ test('the exact low-compressibility 30-pair boundary stays shareable and round-t
     await linkedPage.getByRole('button', { name: /Games/ }).click();
     await expect(linkedPage.getByLabel('List name')).toHaveValue('Maximum boundary lesson');
     await expect(linkedPage.getByLabel('Words and meanings')).toHaveValue(longList);
+    expect((await linkedPage.getByLabel('Words and meanings').inputValue()).split('\n')).toHaveLength(30);
   } finally {
     await linkedContext.close();
   }
@@ -178,7 +208,7 @@ test('the exact low-compressibility 30-pair boundary stays shareable and round-t
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=20260828-polish1-r1');
+  expect(manifest.start_url).toContain('?v=20260828-polish2-r2');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -186,7 +216,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260828-polish1-r1'");
+  expect(worker).toContain("const VERSION = '20260828-polish2-r2'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -357,6 +387,44 @@ test('@claim:offline-demo reloads after the first demo visit', async ({ page, co
   await context.setOffline(false);
 });
 
+test('@claim:demo-discard reset stays isolated and Start for real removes every demo key', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.setItem('wordlist-arcade-draft', 'real — private');
+    localStorage.setItem('wordlist-arcade-title', 'Private draft');
+  });
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByLabel('Words and meanings').fill('changed — value\nsecond — value\nthird — value');
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.getByLabel('Words and meanings')).toHaveValue(list);
+  await page.getByRole('button', { name: 'Match up' }).click();
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('link', { name: 'Start for real' }).click();
+  await expect(page).toHaveURL('/');
+  const storage = await page.evaluate(() => ({
+    draft: localStorage.getItem('wordlist-arcade-draft'),
+    title: localStorage.getItem('wordlist-arcade-title'),
+    demoKeys: Object.keys(localStorage).filter(key => key.startsWith('demo:'))
+  }));
+  expect(storage.draft).toBe('real — private');
+  expect(storage.title).toBe('Private draft');
+  expect(storage.demoKeys).toEqual([]);
+});
+
+test('demo shell has zero axe violations and games include site navigation', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.getByRole('link', { name: 'Wordlist Arcade home' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Privacy' }).first()).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole('button', { name: /Games/ }).click();
+  for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race']) {
+    await page.getByRole('button', { name }).click();
+    await expectNoAxeViolations(page);
+    await page.getByRole('button', { name: /Games/ }).click();
+  }
+});
+
 test('demo reset, titles, focus, metadata, and the designed 404 route work', async ({ page }) => {
   await page.goto('/?demo=1');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/demo$/);
@@ -374,6 +442,9 @@ test('demo reset, titles, focus, metadata, and the designed 404 route work', asy
   await expect(page).toHaveTitle('Page not found — Wordlist Arcade');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page was not found');
   await expect(page.getByRole('link', { name: 'Go to Wordlist Arcade' })).toBeVisible();
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'http://127.0.0.1:4173/not-a-real-route');
+  await page.goto('/404.html');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://wordlist-arcade.sociobot.in/404');
 });
 
 test('starting for real discards sample state and game metadata has the matching canonical URL', async ({ page }) => {

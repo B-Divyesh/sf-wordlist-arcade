@@ -17,7 +17,7 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish1-r1';
+const BUILD_ID = '20260828-polish2-r2';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
@@ -47,8 +47,9 @@ function removeLocal(key: string): void {
 
 function clearDemo(): void {
   try {
-    localStorage.removeItem('demo:wordlist-arcade-draft');
-    localStorage.removeItem('demo:wordlist-arcade-title');
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('demo:'))
+      .forEach(key => localStorage.removeItem(key));
   } catch { /* Nothing to clear. */ }
 }
 
@@ -86,14 +87,14 @@ function header(): string {
 
 function footer(): string {
   return `<footer class="site-footer"><div class="shell footer-inner">
-    <p><strong>Wordlist Arcade</strong> makes classroom vocabulary games. Hero artwork was generated for this project. Built by Param Factory · ${BUILD_ID}</p>
+    <p><strong>Wordlist Arcade</strong> makes classroom vocabulary games. Built by Param Factory · ${BUILD_ID}</p>
     <div class="footer-links"><a class="text-link" href="/?demo=1">Demo</a><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
   </div></footer>`;
 }
 
 function demoBanner(): string {
   if (!isDemo()) return '';
-  return `<aside class="demo-banner" role="status"><span><strong>Demo</strong> — sample data, nothing is saved.</span><span class="demo-actions"><button class="text-button" id="reset-demo" type="button">Reset demo</button><a class="text-button" id="start-real" href="/">Start for real</a></span></aside>`;
+  return `<aside class="demo-banner" aria-label="Demo controls"><span role="status"><strong>Demo</strong> — sample data, nothing is saved.</span><span class="demo-actions"><button class="text-button" id="reset-demo" type="button">Reset demo</button><a class="text-button" id="start-real" href="/">Start for real</a></span></aside>`;
 }
 
 function setupDemoBanner(): void {
@@ -101,14 +102,21 @@ function setupDemoBanner(): void {
   reset?.addEventListener('click', () => {
     clearDemo();
     currentList = DEMO_LIST;
-    writeLocal(storageKey('wordlist-arcade-draft'), EXAMPLE);
-    writeLocal(storageKey('wordlist-arcade-title'), DEMO_TITLE);
+    writeLocal('wordlist-arcade-draft', EXAMPLE);
+    writeLocal('wordlist-arcade-title', DEMO_TITLE);
     if (currentGame) renderGame(currentGame); else renderHome(DEMO_LIST, 'Demo reset. The sample game is ready.');
   });
   document.querySelector<HTMLAnchorElement>('#start-real')?.addEventListener('click', event => {
     event.preventDefault();
     leaveDemo();
     navigate('/');
+  });
+  document.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(link => {
+    if (link.id === 'start-real') return;
+    const target = new URL(link.href, location.href);
+    const staysInDemo = target.origin === location.origin &&
+      (target.pathname === '/demo' || target.searchParams.get('demo') === '1');
+    if (!staysInDemo) link.addEventListener('click', clearDemo);
   });
 }
 
@@ -140,7 +148,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
       <section class="maker-wrap" id="make"><div class="maker shell">
         <div class="editor-panel">
           <div class="section-intro"><p class="eyebrow">Make vocabulary games</p><h2>Paste word pairs</h2><p>Put one word and meaning on each line. We check the list as you type.</p></div>
-          <div class="field"><label for="list-title">List name <span class="label-help">Shown to students in the game room</span></label><input id="list-title" maxlength="80" value="${esc(list.title)}" autocomplete="off" /></div>
+          <div class="field"><label for="list-title">List name <span class="label-help">Shown at the top of each game</span></label><input id="list-title" maxlength="80" value="${esc(list.title)}" autocomplete="off" /></div>
           <div class="field"><label for="wordlist">Words and meanings <span class="label-help">Example: nocturnal — active during the night</span></label><textarea id="wordlist" spellcheck="true" aria-describedby="parse-status">${esc(initialText)}</textarea></div>
           <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load sample list</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
           <div class="status" id="parse-status" role="status" aria-live="polite">Add at least 3 pairs to unlock the games.</div>
@@ -150,7 +158,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
             <div class="inline-actions"><button class="button small" id="download-lesson" type="button" disabled>Download lesson</button><button class="button small" id="share-lesson" type="button" disabled>Share lesson</button><button class="button small" id="import-lesson" type="button">Import lesson</button><input class="sr-only" id="lesson-file" type="file" accept="application/json,.json" aria-label="Choose a Wordlist Arcade lesson file" /></div>
             <p class="share-limit" id="share-limit" hidden></p>
           </section>
-          <p class="label-help">Use 3 to 30 pairs. Put a dash, colon, equals sign, vertical bar, or tab between each word and meaning.</p>
+          <p class="label-help">Use 3 to 30 pairs. Use a dash or colon between each word and meaning.</p>
         </div>
         <div class="game-shelf" aria-labelledby="shelf-title">
           <div class="shelf-heading"><h2 id="shelf-title">Choose a game</h2><span class="count-pill" id="pair-count">0 pairs</span></div>
@@ -312,7 +320,12 @@ function openGame(game: GameId): void {
 }
 
 function playChrome(game: (typeof games)[number]): string {
-  return `<div class="play-page">${demoBanner()}<header class="play-header"><nav class="play-nav shell" aria-label="Game controls">
+  return `<div class="play-page">${demoBanner()}<header class="play-header">
+    <nav class="play-site-nav shell" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
+      <a class="text-link" href="/privacy/">Privacy</a>
+    </nav>
+    <nav class="play-nav shell" aria-label="Game controls">
     <button class="button small" id="back-home" type="button">${icon('back')}<span>Games</span></button>
     <div class="game-title"><span>${esc(currentList.title)}</span><h1 tabindex="-1">${game.name}</h1></div>
     <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span class="fullscreen-label">Share</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span class="fullscreen-label">Fullscreen</span></button></div>

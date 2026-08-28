@@ -7,22 +7,22 @@ account.
 
 Live site: <https://wordlist-arcade.sociobot.in>
 
-## Use it
+## Make a vocabulary game
 
 1. Paste one word and meaning on each line.
 2. Choose Match up, Word strike, Anagram, Word reveal, Memory grid, or Quiz race.
 3. Play together or copy a class link.
 
 Use the sample at <https://wordlist-arcade.sociobot.in/?demo=1>. It opens a
-ready-to-play photosynthesis game. Demo data uses `demo:` local-storage keys,
-never reads real drafts, and can be reset or discarded with **Start for real**.
+ready-to-play photosynthesis game. The demo keeps sample data separate from
+your drafts. Reset restores the sample. Start for real deletes the sample data.
 
 Wordlist Arcade accepts 3 to 30 pairs. It checks each row while you type. It
-can copy a class link with the list data after `#`. The app works offline after
+can copy a class link that contains the list. The app works offline after
 the first visit. These claims are declared and tested in
 [`.factory/claims.json`](.factory/claims.json).
 
-## Develop
+## Run Wordlist Arcade locally
 
 Requires Node.js 20 or later.
 
@@ -31,7 +31,7 @@ npm ci
 npm run dev
 ```
 
-## Verify
+## Run the tests
 
 ```sh
 npm test
@@ -52,12 +52,11 @@ Azure Static Web Apps settings live in `public/staticwebapp.config.json`.
 
 ## Privacy
 
-Real drafts use browser local storage. Demo drafts use a separate `demo:`
-namespace. Shared list data is after `#` in a class link. Do not put student
-names or confidential content in a list. Read the [privacy notice](/privacy/)
-and [terms](/terms/).
+Real drafts use browser local storage. Demo drafts use separate browser
+storage. A class link contains the shared list. Do not put student names or
+confidential content in a list. Read the [privacy notice](/privacy/) and
+[terms](/terms/).
 
-The hero and social image are original generated classroom-machine artwork.
-Their source prompt and provenance are in `.factory/design.md`.
+Asset sources and provenance are documented in `.factory/design.md`.
 
 Licensed under the MIT License.

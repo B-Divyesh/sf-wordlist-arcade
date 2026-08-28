@@ -5,8 +5,9 @@ demo. It immediately opens a playable Match up game using six photosynthesis
 word pairs from `EXAMPLE` in `src/core.ts`.
 
 The persistent banner says “Demo — sample data, nothing is saved.” **Reset
-demo** restores the sample. **Start for real** deletes demo keys and returns to
-the normal maker.
+demo** restores the sample. **Start for real** deletes every demo key and
+returns to the normal maker. The combined Reset → play → Back → Start for real
+path is covered by `@claim:demo-discard`.
 
 Demo storage keys are `demo:wordlist-arcade-draft` and
 `demo:wordlist-arcade-title`. Demo mode never reads or writes the real

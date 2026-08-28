@@ -56,6 +56,13 @@
     "sandbox": "fresh demo context copies a link, asserts its data stays after #, and opens it in a fresh context"
   },
   {
+    "id": "long-class-link",
+    "claim": "A maximum 30-pair class link stays copyable and restores every pair",
+    "where": "long-link guidance",
+    "test": "npm run test:claims -- --grep @claim:long-class-link",
+    "sandbox": "fresh context creates a low-compressibility 30-pair list, copies its complete link, opens it in another context, and asserts the exact title and all 30 rows"
+  },
+  {
     "id": "lesson-file",
     "claim": "Download a lesson file that restores every pair",
     "where": "maker sharing help and README",
@@ -82,5 +89,12 @@
     "where": "offline status message and README",
     "test": "npm run test:claims -- --grep @claim:offline-demo",
     "sandbox": "fresh demo context visits once, then context.setOffline(true) reloads the ready-to-play demo"
+  },
+  {
+    "id": "demo-discard",
+    "claim": "Reset restores the sample and Start for real deletes all demo data without changing a real draft",
+    "where": "demo banner, README, and demo documentation",
+    "test": "npm run test:claims -- --grep @claim:demo-discard",
+    "sandbox": "fresh context seeds real storage, edits and resets the demo, plays and returns, exits with Start for real, then asserts the real draft is exact and no demo key remains"
   }
 ]
