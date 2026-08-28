@@ -17,7 +17,7 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish3-r3';
+const BUILD_ID = '20260828-polish4-r4';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
@@ -25,6 +25,7 @@ let currentList: SharedList = { title: 'My vocabulary', pairs: [] };
 let currentGame: GameId | null = null;
 let waitingWorker: ServiceWorker | null = null;
 let gameRunId = 0;
+let demoRouteActive = isDemo();
 
 function isDemo(): boolean {
   return location.pathname === '/demo' || new URLSearchParams(location.search).get('demo') === '1';
@@ -597,6 +598,15 @@ function restoreDemoList(): SharedList {
 function route(): void {
   const path = location.pathname.replace(/\/$/, '') || '/';
   const legacyHash = location.hash.slice(1);
+  const demoNow = isDemo();
+  // A browser Back gesture can leave the demo without activating one of the
+  // banner links. Clear its separate namespace before the normal route draws.
+  if (demoRouteActive && !demoNow) {
+    clearDemo();
+    currentList = { title: 'My vocabulary', pairs: [] };
+    currentGame = null;
+  }
+  demoRouteActive = demoNow;
   const isLegacyGame = legacyHash.startsWith('play/');
   const isGameRoute = path.startsWith('/play/') || isLegacyGame;
   if (path !== '/' && path !== '/demo' && !path.startsWith('/play/') && !isLegacyGame) {
@@ -645,6 +655,11 @@ function route(): void {
 
 window.addEventListener('hashchange', route);
 window.addEventListener('popstate', route);
+// This also covers document navigation (including browser Back) that bypasses
+// popstate. A reload inside the demo simply re-seeds the shipped sample.
+window.addEventListener('pagehide', () => {
+  if (isDemo()) clearDemo();
+});
 window.addEventListener('online', () => updateOnlineStatus(true));
 window.addEventListener('offline', () => updateOnlineStatus(false));
 route();
@@ -663,7 +678,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         const installing = registration.installing;
         if (!installing) return;
         installing.addEventListener('statechange', () => {
-          if (installing.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(installing);
+          // `hadController` distinguishes a genuine update from the first
+          // install. Use the registration's waiting worker, which is stable
+          // after installation and can receive SKIP_WAITING.
+          if (installing.state === 'installed' && hadController) offerUpdate(registration.waiting || installing);
         });
       });
     }).catch(() => undefined);

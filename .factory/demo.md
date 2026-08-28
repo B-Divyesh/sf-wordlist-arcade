@@ -6,8 +6,9 @@ word pairs from `EXAMPLE` in `src/core.ts`.
 
 The persistent banner says “Demo — sample data, nothing is saved.” **Reset
 demo** restores the sample. **Start for real** deletes every demo key and
-returns to the normal maker. The combined Reset → play → Back → Start for real
-path is covered by `@claim:demo-discard`.
+returns to the normal maker. Browser Back and other navigation away from the
+demo also delete every demo key. The Back exit and Reset → play → Start for
+real paths are covered by `@claim:demo-discard`.
 
 Demo storage keys are `demo:wordlist-arcade-draft` and
 `demo:wordlist-arcade-title`. Demo mode never reads or writes the real

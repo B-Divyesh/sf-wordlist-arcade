@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -33,6 +34,23 @@ function maximumLowCompressibilityList(): string {
     return alphabet[(seed >>> 0) % alphabet.length];
   }).join('');
   return Array.from({ length: 30 }, () => `${gibberish(60)} — ${gibberish(180)}`).join('\n');
+}
+
+async function lockServiceWorkerFixture(): Promise<() => void> {
+  const lockPath = resolve(tmpdir(), 'wordlist-arcade-service-worker-update.lock');
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    try {
+      const descriptor = openSync(lockPath, 'wx');
+      return () => {
+        closeSync(descriptor);
+        try { unlinkSync(lockPath); } catch { /* The temporary lock is already gone. */ }
+      };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      await new Promise(resolveWait => setTimeout(resolveWait, 100));
+    }
+  }
+  throw new Error('Timed out waiting for the isolated service-worker update fixture.');
 }
 
 async function expectNoSeriousAxe(page: Page): Promise<void> {
@@ -94,7 +112,7 @@ test('legal pages and the static 404 page keep the accessible site shell', async
 test('root, demo, legal, and 404 routes share one navigation and footer skeleton', async ({ page }) => {
   const normalize = (value: string | null) => (value || '').replace(/\s+/g, '');
   const expectedHeader = 'WordlistArcadeDemoMakeagamePrivacy';
-  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish3-r3DemoPrivacyTerms';
+  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish4-r4DemoPrivacyTerms';
   for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
     await page.goto(path);
     expect(normalize(await page.locator('header nav[aria-label="Main navigation"]').textContent())).toBe(expectedHeader);
@@ -240,7 +258,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=20260828-polish3-r3');
+  expect(manifest.start_url).toContain('?v=20260828-polish4-r4');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -248,7 +266,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260828-polish3-r3'");
+  expect(worker).toContain("const VERSION = '20260828-polish4-r4'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -259,20 +277,33 @@ test('built PWA files declare install icons, versioned startup, update control, 
 });
 
 test('a waiting service-worker update is offered and can be applied', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await page.reload();
-  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  const workerPath = resolve(process.cwd(), 'dist/sw.js');
-  const worker = readFileSync(workerPath, 'utf8');
+  const releaseFixture = await lockServiceWorkerFixture();
   try {
-    writeFileSync(workerPath, `${worker}\n// Playwright forces a byte-different update.`);
-    await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
-    await expect(page.getByRole('button', { name: 'Update now' })).toBeVisible();
-    await page.getByRole('button', { name: 'Update now' }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
+    await page.goto('/');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForLoadState('load');
+    await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+    await expect(page.getByRole('button', { name: 'Update now' })).toBeHidden();
+    const workerPath = resolve(process.cwd(), 'dist/sw.js');
+    const worker = readFileSync(workerPath, 'utf8');
+    try {
+      writeFileSync(workerPath, `${worker}\n// Playwright forces a byte-different update (${process.pid}).`);
+      await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
+      await expect.poll(async () => page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        return registration?.waiting?.state || '';
+      }), { timeout: 15_000 }).toBe('installed');
+      await expect(page.getByRole('button', { name: 'Update now' })).toBeVisible({ timeout: 15_000 });
+      const updateReload = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 });
+      await page.getByRole('button', { name: 'Update now' }).click();
+      await updateReload;
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
+    } finally {
+      writeFileSync(workerPath, worker);
+    }
   } finally {
-    writeFileSync(workerPath, worker);
+    releaseFixture();
   }
 });
 
@@ -559,13 +590,30 @@ test('@claim:offline-demo reloads after the first demo visit', async ({ page, co
   await context.setOffline(false);
 });
 
-test('@claim:demo-discard reset stays isolated and Start for real removes every demo key', async ({ page }) => {
+test('@claim:demo-discard reset stays isolated, Back exits cleanly, and Start for real removes every demo key', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => {
     localStorage.setItem('wordlist-arcade-draft', 'real — private');
     localStorage.setItem('wordlist-arcade-title', 'Private draft');
   });
-  await page.goto('/?demo=1');
+  const expectRealDraftAndNoDemo = async () => {
+    const storage = await page.evaluate(() => ({
+      draft: localStorage.getItem('wordlist-arcade-draft'),
+      title: localStorage.getItem('wordlist-arcade-title'),
+      demoKeys: Object.keys(localStorage).filter(key => key.startsWith('demo:'))
+    }));
+    expect(storage.draft).toBe('real — private');
+    expect(storage.title).toBe('Private draft');
+    expect(storage.demoKeys).toEqual([]);
+  };
+
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  await page.goBack();
+  await expect(page).toHaveURL('/');
+  await expectRealDraftAndNoDemo();
+
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
   await page.getByRole('button', { name: /Games/ }).click();
   await page.getByLabel('Words and meanings').fill('changed — value\nsecond — value\nthird — value');
   await page.getByRole('button', { name: 'Reset demo' }).click();
@@ -574,14 +622,7 @@ test('@claim:demo-discard reset stays isolated and Start for real removes every 
   await page.getByRole('button', { name: /Games/ }).click();
   await page.getByRole('link', { name: 'Start for real' }).click();
   await expect(page).toHaveURL('/');
-  const storage = await page.evaluate(() => ({
-    draft: localStorage.getItem('wordlist-arcade-draft'),
-    title: localStorage.getItem('wordlist-arcade-title'),
-    demoKeys: Object.keys(localStorage).filter(key => key.startsWith('demo:'))
-  }));
-  expect(storage.draft).toBe('real — private');
-  expect(storage.title).toBe('Private draft');
-  expect(storage.demoKeys).toEqual([]);
+  await expectRealDraftAndNoDemo();
 });
 
 test('demo shell has zero axe violations and games include site navigation', async ({ page }) => {

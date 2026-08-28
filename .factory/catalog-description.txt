@@ -1,1 +1,1 @@
-Make six classroom vocabulary games from one pasted word-pair list.
+Turn one pasted word-pair list into six classroom vocabulary games.

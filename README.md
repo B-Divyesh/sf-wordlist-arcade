@@ -15,7 +15,8 @@ Live site: <https://wordlist-arcade.sociobot.in>
 
 Use the sample at <https://wordlist-arcade.sociobot.in/?demo=1>. It opens a
 ready-to-play photosynthesis game. The demo keeps sample data separate from
-your drafts. Reset restores the sample. Start for real deletes the sample data.
+your drafts. Reset restores the sample. Leaving the demo deletes the sample
+data.
 
 Wordlist Arcade accepts 3 to 30 pairs. It checks each row while you type. It
 can copy a class link that contains the list. The app works offline after

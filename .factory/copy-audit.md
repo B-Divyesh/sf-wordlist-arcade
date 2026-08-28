@@ -62,7 +62,7 @@ The dynamic long-link state adds these sentences:
 | It opens a ready-to-play photosynthesis game. | 6 | `sample-demo` |
 | The demo keeps sample data separate from your drafts. | 9 | `demo-discard` |
 | Reset restores the sample. | 4 | `demo-discard` |
-| Start for real deletes the sample data. | 7 | `demo-discard` |
+| Leaving the demo deletes the sample data. | 7 | `demo-discard` |
 | Wordlist Arcade accepts 3 to 30 pairs. | 7 | `pair-limit` |
 | It checks each row while you type. | 7 | `list-check` |
 | It can copy a class link that contains the list. | 10 | `class-link` |

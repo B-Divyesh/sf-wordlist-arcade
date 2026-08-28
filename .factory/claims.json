@@ -141,9 +141,9 @@
   },
   {
     "id": "demo-discard",
-    "claim": "Reset restores the sample and Start for real deletes all demo data without changing a real draft",
+    "claim": "Reset restores the sample, and every demo exit deletes demo data without changing a real draft",
     "where": "demo banner, README, and demo documentation",
     "test": "npm run test:claims -- --grep @claim:demo-discard",
-    "sandbox": "fresh context seeds real storage, edits and resets the demo, plays and returns, exits with Start for real, then asserts the real draft is exact and no demo key remains"
+    "sandbox": "fresh context seeds real storage, uses browser Back from the one-click demo, then edits, resets, plays, and exits with Start for real; it asserts the real draft is exact and no demo key remains after each exit"
   }
 ]
