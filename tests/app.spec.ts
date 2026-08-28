@@ -220,6 +220,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
+  expect(config.mimeTypes['.webmanifest']).toBe('application/manifest+json');
   expect(config.routes).toEqual(expect.arrayContaining([
     expect.objectContaining({ route: '/assets/*', headers: { 'Cache-Control': 'public, max-age=31536000, immutable' } })
   ]));
@@ -438,11 +439,14 @@ test('demo reset, titles, focus, metadata, and the designed 404 route work', asy
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
   await expect(page.locator('h1')).toBeFocused();
-  await page.goto('/not-a-real-route');
+  const notFoundResponse = await page.goto('/not-a-real-route');
   await expect(page).toHaveTitle('Page not found — Wordlist Arcade');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page was not found');
   await expect(page.getByRole('link', { name: 'Go to Wordlist Arcade' })).toBeVisible();
-  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'http://127.0.0.1:4173/not-a-real-route');
+  const expectedNotFoundOg = notFoundResponse?.status() === 404
+    ? 'https://wordlist-arcade.sociobot.in/404'
+    : `${new URL(page.url()).origin}/not-a-real-route`;
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', expectedNotFoundOg);
   await page.goto('/404.html');
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://wordlist-arcade.sociobot.in/404');
 });
