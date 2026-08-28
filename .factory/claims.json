@@ -70,11 +70,25 @@
     "sandbox": "fresh demo context reaches play without account fields"
   },
   {
+    "id": "no-student-data-fields",
+    "claim": "There are no fields for student names or contact details",
+    "where": "privacy notice",
+    "test": "npm run test:claims -- --grep @claim:no-student-data-fields",
+    "sandbox": "fresh demo context traverses the maker and every game, then asserts form controls, storage, and requests contain no student-name or contact-data collection"
+  },
+  {
+    "id": "no-grading",
+    "claim": "Games do not create student grades, records, or decisions",
+    "where": "terms",
+    "test": "npm run test:claims -- --grep @claim:no-grading",
+    "sandbox": "fresh demo context opens every game and checks its controls, local storage, and network activity for the absence of gradebook, roster, record, or decision output"
+  },
+  {
     "id": "local-device",
     "claim": "Lists stay on this device",
     "where": "landing facts and privacy notice",
     "test": "npm run test:claims -- --grep @claim:local-device",
-    "sandbox": "seeded real storage, then demo flow; asserts real keys remain unchanged, demo keys are namespaced, and all requests are same-origin"
+    "sandbox": "fresh normal context types a title and three pairs, verifies app-written local storage survives reload, clears it through the UI, then verifies a recreated real draft survives the demo without any cross-origin request"
   },
   {
     "id": "pair-limit",
@@ -98,6 +112,13 @@
     "sandbox": "fresh demo context copies a link, asserts its data stays after #, and opens it in a fresh context"
   },
   {
+    "id": "fragment-not-sent",
+    "claim": "Browsers do not send a class link's hash fragment to our web server",
+    "where": "privacy notice",
+    "test": "npm run test:claims -- --grep @claim:fragment-not-sent",
+    "sandbox": "fresh demo context copies a uniquely identifiable class link; a second fresh context records its navigation request, restores the list, and asserts the request URL and body omit the fragment and pair text"
+  },
+  {
     "id": "long-class-link",
     "claim": "A maximum 30-pair class link stays copyable and restores every pair",
     "where": "long-link guidance",
@@ -108,8 +129,15 @@
     "id": "lesson-file",
     "claim": "Download a lesson file that restores every pair",
     "where": "maker sharing help and README",
-    "test": "npm run test:claims -- --grep @claim:lesson-file",
+    "test": "npm run test:claims -- --grep '@claim:lesson-file(?!-)'",
     "sandbox": "fresh demo context downloads the sample lesson, imports it in a second fresh context, and asserts the exact sample rows return"
+  },
+  {
+    "id": "lesson-file-local",
+    "claim": "Lesson-file download and import stay in this browser until you choose where to send the file",
+    "where": "privacy notice",
+    "test": "npm run test:claims -- --grep @claim:lesson-file-local",
+    "sandbox": "fresh demo context downloads and imports a uniquely identifiable lesson while recording action-time requests; it asserts the exact list returns with no extra network request or request body carrying the list"
   },
   {
     "id": "fullscreen",
@@ -145,5 +173,12 @@
     "where": "demo banner, README, and demo documentation",
     "test": "npm run test:claims -- --grep @claim:demo-discard",
     "sandbox": "fresh context seeds real storage, uses browser Back from the one-click demo, then edits, resets, plays, and exits with Start for real; it asserts the real draft is exact and no demo key remains after each exit"
+  },
+  {
+    "id": "node-compat",
+    "claim": "Run Wordlist Arcade with Node.js 20.19.x or Node.js 22.12+",
+    "where": "README local-run instructions and package metadata",
+    "test": "npm run test:node-compat",
+    "sandbox": "the tagged unit check asserts the declared floors, then a clean installed dependency tree type-checks and builds with Node.js 20.19.0"
   }
 ]

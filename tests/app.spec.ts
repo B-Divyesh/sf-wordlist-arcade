@@ -104,6 +104,7 @@ test('legal pages and the static 404 page keep the accessible site shell', async
     await expect(page.locator('main')).toHaveCount(1);
     await expect(page.getByRole('link', { name: 'Privacy' }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Terms' }).first()).toBeVisible();
+    if (path !== '/404.html') await expect(page.getByRole('link', { name: 'Sociobot (external site)' })).toHaveAttribute('href', 'https://sociobot.in');
     await expectTouchTargets(page);
     await expectNoSeriousAxe(page);
   }
@@ -112,7 +113,7 @@ test('legal pages and the static 404 page keep the accessible site shell', async
 test('root, demo, legal, and 404 routes share one navigation and footer skeleton', async ({ page }) => {
   const normalize = (value: string | null) => (value || '').replace(/\s+/g, '');
   const expectedHeader = 'WordlistArcadeDemoMakeagamePrivacy';
-  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish4-r4DemoPrivacyTerms';
+  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish5-r5DemoPrivacyTerms';
   for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
     await page.goto(path);
     expect(normalize(await page.locator('header nav[aria-label="Main navigation"]').textContent())).toBe(expectedHeader);
@@ -143,7 +144,7 @@ test('all six populated game states have no serious or critical axe findings', a
     expect(new URL(page.url()).pathname).toMatch(/^\/play\//);
     expect(new URL(page.url()).hash).toContain('d=');
     await expectNoSeriousAxe(page);
-    await page.getByRole('button', { name: /Games/ }).click();
+    await page.getByRole('button', { name: 'Choose a game' }).click();
     await expect(page.getByText('6 pairs ready. Choose any game.')).toBeVisible();
   }
 });
@@ -185,9 +186,9 @@ test('mobile layout does not overflow horizontally', async ({ page }, testInfo) 
   await page.getByRole('link', { name: 'Try it with sample data' }).click();
   await expect(page.locator('#share-game span')).toHaveText('Copy link');
   await expect(page.locator('#share-game span')).toBeVisible();
-  await expect(page.locator('#fullscreen span')).toHaveText('Fullscreen');
+  await expect(page.locator('#fullscreen span')).toHaveText('Enter fullscreen');
   await expect(page.locator('#fullscreen span')).toBeVisible();
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Memory grid' }).click();
   await expect(page.locator('.memory-grid')).toBeVisible();
   const gameOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -228,7 +229,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
   try {
     await linkedPage.goto(classLink);
     await expect(linkedPage.locator('.game-title h1')).toHaveText('Match up');
-    await linkedPage.getByRole('button', { name: /Games/ }).click();
+    await linkedPage.getByRole('button', { name: 'Choose a game' }).click();
     await expect(linkedPage.getByLabel('List name')).toHaveValue('Maximum boundary lesson');
     await expect(linkedPage.getByLabel('Words and meanings')).toHaveValue(longList);
     expect((await linkedPage.getByLabel('Words and meanings').inputValue()).split('\n')).toHaveLength(30);
@@ -258,7 +259,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=20260828-polish4-r4');
+  expect(manifest.start_url).toContain('?v=20260828-polish5-r5');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -266,7 +267,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260828-polish4-r4'");
+  expect(worker).toContain("const VERSION = '20260828-polish5-r5'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -327,7 +328,7 @@ test('@claim:six-games opens and uses all six games for a valid boundary list', 
   const boundaryList = boundaryPairs.map(([term, meaning]) => `${term} — ${meaning}`).join('\n');
 
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByLabel('Words and meanings').fill(boundaryList);
   await expect(page.getByText('3 pairs ready. Choose any game.')).toBeVisible();
 
@@ -364,7 +365,7 @@ test('@claim:six-games opens and uses all six games for a valid boundary list', 
       await page.locator('.choice').first().click();
       await expect(page.locator('.live-message')).not.toBeEmpty();
     }
-    await page.getByRole('button', { name: /Games/ }).click();
+    await page.getByRole('button', { name: 'Choose a game' }).click();
   }
 
   expect(consoleErrors).toEqual([]);
@@ -382,7 +383,7 @@ test('@claim:match-up-play confirms a matching word and meaning', async ({ page 
 
 test('@claim:word-strike-play confirms the right word before the next turn', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Word strike' }).click();
   const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
   await page.getByRole('button', { name: answer, exact: true }).click();
@@ -391,7 +392,7 @@ test('@claim:word-strike-play confirms the right word before the next turn', asy
 
 test('@claim:anagram-play accepts the word for its displayed clue', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Anagram' }).click();
   const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
   await page.getByLabel('Your answer').fill(answer);
@@ -401,7 +402,7 @@ test('@claim:anagram-play accepts the word for its displayed clue', async ({ pag
 
 test('@claim:word-reveal-play reveals the solved word before six misses', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Word reveal' }).click();
   const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
   await page.getByLabel('Solve the whole word').fill(answer);
@@ -412,7 +413,7 @@ test('@claim:word-reveal-play reveals the solved word before six misses', async 
 
 test('@claim:memory-play keeps a found word-and-meaning pair visible', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Memory grid' }).click();
   const first = page.getByRole('button', { name: 'Hidden card' }).first();
   const firstIndex = await first.getAttribute('data-index');
@@ -439,7 +440,7 @@ test('@claim:memory-play keeps a found word-and-meaning pair visible', async ({ 
 
 test('@claim:quiz-race-play has up to five questions and advances after an answer', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Quiz race' }).click();
   await expect(page.locator('.race-step')).toHaveCount(5);
   const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
@@ -460,32 +461,93 @@ test('@claim:no-account starts the sample with no account form', async ({ page }
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
 });
 
-test('@claim:local-device keeps demo separate and makes no cross-origin requests', async ({ page }) => {
+test('@claim:no-student-data-fields keeps the maker and every game free of student-data fields', async ({ page }) => {
+  const requests: { url: string; method: string; body: string | null }[] = [];
+  page.on('request', request => requests.push({ url: request.url(), method: request.method(), body: request.postData() }));
+  const expectNoStudentDataFields = async () => {
+    const fields = await page.locator('input, textarea, select').evaluateAll(elements => elements.map(element => {
+      const id = element.id;
+      const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent || '' : '';
+      return {
+        type: (element as HTMLInputElement).type || '',
+        autocomplete: element.getAttribute('autocomplete') || '',
+        label: `${label} ${element.getAttribute('aria-label') || ''} ${element.getAttribute('name') || ''}`.toLowerCase()
+      };
+    }).filter(field => field.type === 'email' || field.type === 'tel' || /email|contact|student|pupil|learner/.test(`${field.autocomplete} ${field.label}`)));
+    expect(fields).toEqual([]);
+  };
+  await page.goto('/?demo=1');
+  await expectNoStudentDataFields();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
+  await expectNoStudentDataFields();
+  for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race']) {
+    await page.getByRole('button', { name }).click();
+    await expectNoStudentDataFields();
+    await page.getByRole('button', { name: 'Choose a game' }).click();
+  }
+  const keys = await page.evaluate(() => Object.keys(localStorage));
+  expect(keys.every(key => key.startsWith('demo:'))).toBe(true);
+  expect(requests.every(request => new URL(request.url).origin === new URL(page.url()).origin && request.method === 'GET' && !request.body)).toBe(true);
+});
+
+test('@claim:no-grading keeps every demo game free of grade, record, roster, and decision output', async ({ page }) => {
+  const requests: { url: string; method: string; body: string | null }[] = [];
+  page.on('request', request => requests.push({ url: request.url(), method: request.method(), body: request.postData() }));
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: 'Choose a game' }).click();
+  for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race']) {
+    await page.getByRole('button', { name }).click();
+    const output = (await page.locator('#main').innerText()).toLowerCase();
+    expect(output).not.toMatch(/gradebook|student grade|assessment|student record|roster|decision/);
+    await page.getByRole('button', { name: 'Choose a game' }).click();
+  }
+  const storage = await page.evaluate(() => Object.entries(localStorage));
+  expect(storage.map(([key]) => key)).toEqual(expect.arrayContaining(['demo:wordlist-arcade-draft', 'demo:wordlist-arcade-title']));
+  expect(storage.every(([key, value]) => key.startsWith('demo:') && !/grade|record|roster|decision/i.test(value))).toBe(true);
+  expect(requests.every(request => new URL(request.url).origin === new URL(page.url()).origin && request.method === 'GET' && !request.body)).toBe(true);
+});
+
+test('@claim:local-device saves, restores, clears, and isolates a real draft', async ({ page }) => {
   const requests: string[] = [];
+  const realTitle = 'Rainforest review';
+  const realList = 'canopy — the upper layer of a forest\norchid — a flowering plant\nsloth — a slow tree-dwelling mammal';
   page.on('request', request => requests.push(request.url()));
   await page.goto('/');
-  await page.evaluate(() => {
-    localStorage.setItem('wordlist-arcade-draft', 'real — private');
-    localStorage.setItem('wordlist-arcade-title', 'Private draft');
-  });
-  const before = await page.evaluate(() => ({ draft: localStorage.getItem('wordlist-arcade-draft'), title: localStorage.getItem('wordlist-arcade-title') }));
-  await page.goto('/?demo=1');
+  await page.getByLabel('List name').fill(realTitle);
+  await page.getByLabel('Words and meanings').fill(realList);
+  await expect(page.getByText('3 pairs ready. Choose any game.')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => ({
+    draft: localStorage.getItem('wordlist-arcade-draft'),
+    title: localStorage.getItem('wordlist-arcade-title')
+  }))).toEqual({ draft: realList, title: realTitle });
+  await page.reload();
+  await expect(page.getByLabel('List name')).toHaveValue(realTitle);
+  await expect(page.getByLabel('Words and meanings')).toHaveValue(realList);
+  await page.getByRole('button', { name: 'Clear list' }).click();
+  await expect(page.getByLabel('List name')).toHaveValue('My vocabulary');
+  await expect(page.getByLabel('Words and meanings')).toHaveValue('');
+  await expect.poll(() => page.evaluate(() => ({
+    draft: localStorage.getItem('wordlist-arcade-draft'),
+    title: localStorage.getItem('wordlist-arcade-title')
+  }))).toEqual({ draft: null, title: null });
+
+  await page.getByLabel('List name').fill(realTitle);
+  await page.getByLabel('Words and meanings').fill(realList);
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
-  const after = await page.evaluate(() => ({
+  const storage = await page.evaluate(() => ({
     draft: localStorage.getItem('wordlist-arcade-draft'),
     title: localStorage.getItem('wordlist-arcade-title'),
     demoDraft: localStorage.getItem('demo:wordlist-arcade-draft')
   }));
-  expect(after.draft).toBe(before.draft);
-  expect(after.title).toBe(before.title);
-  expect(after.demoDraft).toContain('photosynthesis');
+  expect(storage).toEqual({ draft: realList, title: realTitle, demoDraft: list });
   expect(requests.every(url => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
 });
 
 test('@claim:pair-limit accepts up to 30 word pairs', async ({ page }) => {
   const thirtyOne = Array.from({ length: 31 }, (_, index) => `word${index + 1} — meaning${index + 1}`).join('\n');
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByLabel('Words and meanings').fill(thirtyOne);
   await expect(page.locator('#parse-status')).toContainText('Line 31 is beyond the 30-pair limit. 30 valid pairs found.');
   await expect(page.getByRole('button', { name: 'Quiz race' })).toBeEnabled();
@@ -493,14 +555,14 @@ test('@claim:pair-limit accepts up to 30 word pairs', async ({ page }) => {
 
 test('@claim:list-check checks word pairs while they are typed', async ({ page }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByLabel('Words and meanings').fill('good — valid\nbroken row');
   await expect(page.locator('#parse-status')).toContainText('Line 2 needs a word and meaning');
 });
 
 test('@claim:class-link copies a playable class link with data after the hash', async ({ page, browser }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByRole('button', { name: 'Copy class link' }).click();
   const link = await page.evaluate(() => navigator.clipboard.readText());
@@ -518,9 +580,44 @@ test('@claim:class-link copies a playable class link with data after the hash', 
   }
 });
 
+test('@claim:fragment-not-sent restores a class link without sending its fragment or list text', async ({ page, browser }) => {
+  const privateTitle = 'Private ecology review';
+  const privateTerm = 'mycelium-private-term';
+  const privateMeaning = 'private underground fungal network meaning';
+  const privateList = `${privateTerm} — ${privateMeaning}\nlichen-private-term — a private partnership of fungus and algae\ncanopy-private-term — a private forest roof`;
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: 'Choose a game' }).click();
+  await page.getByLabel('List name').fill(privateTitle);
+  await page.getByLabel('Words and meanings').fill(privateList);
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy class link' }).click();
+  const classLink = await page.evaluate(() => navigator.clipboard.readText());
+  expect(classLink).toContain('#d=');
+
+  const fresh = await browser.newContext();
+  const requests: { url: string; body: string | null; navigation: boolean }[] = [];
+  try {
+    const linked = await fresh.newPage();
+    linked.on('request', request => requests.push({ url: request.url(), body: request.postData(), navigation: request.isNavigationRequest() }));
+    await linked.goto(classLink);
+    await expect(linked.getByRole('heading', { level: 1 })).toHaveText('Match up');
+    await linked.getByRole('button', { name: 'Choose a game' }).click();
+    await expect(linked.getByLabel('List name')).toHaveValue(privateTitle);
+    await expect(linked.getByLabel('Words and meanings')).toHaveValue(privateList);
+    const navigation = requests.find(request => request.navigation);
+    expect(navigation).toBeTruthy();
+    const sent = `${navigation?.url || ''}\n${navigation?.body || ''}`;
+    expect(sent).not.toContain('#d=');
+    expect(sent).not.toContain(privateTerm);
+    expect(sent).not.toContain(privateMeaning);
+  } finally {
+    await fresh.close();
+  }
+});
+
 test('@claim:lesson-file restores every sample pair in a fresh context', async ({ page, browser }) => {
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download lesson file' }).click();
   const artifact = await downloadPromise;
@@ -530,10 +627,49 @@ test('@claim:lesson-file restores every sample pair in a fresh context', async (
   try {
     const imported = await fresh.newPage();
     await imported.goto('/?demo=1');
-    await imported.getByRole('button', { name: /Games/ }).click();
+    await imported.getByRole('button', { name: 'Choose a game' }).click();
     await imported.locator('#lesson-file').setInputFiles(artifactPath!);
     await expect(imported.getByLabel('Words and meanings')).toHaveValue(list);
     await expect(imported.getByLabel('List name')).toHaveValue('Photosynthesis practice');
+  } finally {
+    await fresh.close();
+  }
+});
+
+test('@claim:lesson-file-local downloads and imports a private lesson without action-time network requests', async ({ page, browser }) => {
+  const privateTitle = 'Private weather review';
+  const privateTerm = 'cirrus-private-term';
+  const privateMeaning = 'a private high cloud made of ice crystals';
+  const privateList = `${privateTerm} — ${privateMeaning}\nstratus-private-term — a private low gray cloud layer\ncumulus-private-term — a private puffy fair-weather cloud`;
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: 'Choose a game' }).click();
+  await page.getByLabel('List name').fill(privateTitle);
+  await page.getByLabel('Words and meanings').fill(privateList);
+  const downloadRequests: { url: string; body: string | null }[] = [];
+  page.on('request', request => downloadRequests.push({ url: request.url(), body: request.postData() }));
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download lesson file' }).click();
+  const artifact = await downloadPromise;
+  const artifactPath = await artifact.path();
+  expect(artifactPath).not.toBeNull();
+  expect(downloadRequests).toEqual([]);
+
+  const fresh = await browser.newContext();
+  try {
+    const imported = await fresh.newPage();
+    await imported.goto('/?demo=1');
+    await imported.getByRole('button', { name: 'Choose a game' }).click();
+    const importRequests: { url: string; body: string | null }[] = [];
+    imported.on('request', request => importRequests.push({ url: request.url(), body: request.postData() }));
+    await imported.locator('#lesson-file').setInputFiles(artifactPath!);
+    await expect(imported.getByLabel('List name')).toHaveValue(privateTitle);
+    await expect(imported.getByLabel('Words and meanings')).toHaveValue(privateList);
+    expect(downloadRequests).toEqual([]);
+    expect(importRequests.every(request => {
+      const url = new URL(request.url);
+      return url.origin === new URL(imported.url()).origin && /\/assets\/word-machine(?:-640)?\.webp$/.test(url.pathname) && !request.body;
+    })).toBe(true);
+    expect([...downloadRequests, ...importRequests].every(request => !`${request.url}\n${request.body || ''}`.includes(privateTerm))).toBe(true);
   } finally {
     await fresh.close();
   }
@@ -549,13 +685,18 @@ test('@claim:fullscreen calls the browser fullscreen API from the sample game', 
   });
   await page.getByRole('button', { name: 'Enter fullscreen' }).click();
   await expect.poll(() => page.locator('html').getAttribute('data-fullscreen-requested')).toBe('true');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => document.documentElement });
+    document.dispatchEvent(new Event('fullscreenchange'));
+  });
+  await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible();
 });
 
 test('@claim:no-tracking keeps the whole sample flow first-party', async ({ page }) => {
   const requests: string[] = [];
   page.on('request', request => requests.push(request.url()));
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Quiz race' }).click();
   const origin = new URL(page.url()).origin;
   expect(requests.every(url => new URL(url).origin === origin)).toBe(true);
@@ -571,7 +712,7 @@ test('@claim:no-cookies keeps the complete demo flow free of cookies and Set-Coo
     if (setCookie) setCookieHeaders.push(setCookie);
   });
   await page.goto('/?demo=1');
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('button', { name: 'Quiz race' }).click();
   const answer = answerForPrompt(await page.locator('.prompt').textContent() || '');
   await page.getByRole('button', { name: answer, exact: true }).click();
@@ -614,12 +755,12 @@ test('@claim:demo-discard reset stays isolated, Back exits cleanly, and Start fo
   await expectRealDraftAndNoDemo();
 
   await page.getByRole('link', { name: 'Try it with sample data' }).click();
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByLabel('Words and meanings').fill('changed — value\nsecond — value\nthird — value');
   await page.getByRole('button', { name: 'Reset demo' }).click();
   await expect(page.getByLabel('Words and meanings')).toHaveValue(list);
   await page.getByRole('button', { name: 'Match up' }).click();
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByRole('link', { name: 'Start for real' }).click();
   await expect(page).toHaveURL('/');
   await expectRealDraftAndNoDemo();
@@ -630,18 +771,18 @@ test('demo shell has zero axe violations and games include site navigation', asy
   await expect(page.getByRole('link', { name: 'Wordlist Arcade home' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Privacy' }).first()).toBeVisible();
   await expectNoAxeViolations(page);
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   for (const name of ['Match up', 'Word strike', 'Anagram', 'Word reveal', 'Memory grid', 'Quiz race']) {
     await page.getByRole('button', { name }).click();
     await expectNoAxeViolations(page);
-    await page.getByRole('button', { name: /Games/ }).click();
+    await page.getByRole('button', { name: 'Choose a game' }).click();
   }
 });
 
 test('demo reset, titles, focus, metadata, and the designed 404 route work', async ({ page }) => {
   await page.goto('/?demo=1');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/demo$/);
-  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByRole('button', { name: 'Choose a game' }).click();
   await page.getByLabel('Words and meanings').fill('changed — value\nsecond — value\nthird — value');
   await page.getByRole('button', { name: 'Reset demo' }).click();
   await expect(page.getByLabel('Words and meanings')).toHaveValue(list);

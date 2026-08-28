@@ -25,7 +25,7 @@ the first visit. These claims are declared and tested in
 
 ## Run Wordlist Arcade locally
 
-Requires Node.js 20 or later.
+Use Node.js 20.19.x or Node.js 22.12+.
 
 ```sh
 npm ci

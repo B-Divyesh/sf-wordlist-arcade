@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import packageJson from '../package.json';
 import { choicesFor, decodeList, encodeList, lessonArtifact, normalized, parseLessonArtifact, parsePairs, shuffle } from './core';
 
 function lowCompressibilityList() {
@@ -83,4 +84,8 @@ describe('game helpers', () => {
     expect(source).toEqual([1, 2, 3]);
     expect(result).not.toBe(source);
   });
+});
+
+it('@claim:node-compat declares the tested Node.js support floor', () => {
+  expect(packageJson.engines.node).toBe('>=20.19.0 <21 || >=22.12.0');
 });

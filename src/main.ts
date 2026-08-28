@@ -17,7 +17,7 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish4-r4';
+const BUILD_ID = '20260828-polish5-r5';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
@@ -194,8 +194,13 @@ function renderHome(prefill?: SharedList, notice = ''): void {
 function updateMaker(title: string, raw: string): void {
   const result = parsePairs(raw);
   currentList = { title: title.trim() || 'My vocabulary', pairs: result.pairs };
-  writeLocal('wordlist-arcade-draft', raw);
-  writeLocal('wordlist-arcade-title', currentList.title);
+  if (raw.trim() || currentList.title !== 'My vocabulary') {
+    writeLocal('wordlist-arcade-draft', raw);
+    writeLocal('wordlist-arcade-title', currentList.title);
+  } else {
+    removeLocal('wordlist-arcade-draft');
+    removeLocal('wordlist-arcade-title');
+  }
   const status = get<HTMLElement>('#parse-status');
   const count = get<HTMLElement>('#pair-count');
   count.textContent = `${result.pairs.length} ${result.pairs.length === 1 ? 'pair' : 'pairs'}`;
@@ -309,16 +314,23 @@ function openGame(game: GameId): void {
 function playChrome(game: (typeof games)[number]): string {
   return `<div class="play-page">${header()}${demoBanner()}<section class="play-toolbar" aria-label="Game area">
     <nav class="play-nav shell" aria-label="Game controls">
-    <button class="button small" id="back-home" type="button">${icon('back')}<span>Games</span></button>
+    <button class="button small" id="back-home" type="button">${icon('back')}<span>Choose a game</span></button>
     <div class="game-title"><span>${esc(currentList.title)}</span><h1 tabindex="-1">${game.name}</h1></div>
-    <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span>Copy link</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span>Fullscreen</span></button></div>
+    <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span>Copy link</span></button><button class="button small" id="fullscreen" type="button">${icon('screen')}<span>Enter fullscreen</span></button></div>
   </nav></section><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main>${footer()}</div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 }
 
 function setupPlayControls(game: GameId): void {
   get<HTMLButtonElement>('#back-home').addEventListener('click', () => { navigate(isDemo() ? '/demo#make' : '/#make'); });
   get<HTMLButtonElement>('#share-game').addEventListener('click', () => copyLink(game));
-  get<HTMLButtonElement>('#fullscreen').addEventListener('click', async () => {
+  const fullscreen = get<HTMLButtonElement>('#fullscreen');
+  const updateFullscreenLabel = () => {
+    const entering = !document.fullscreenElement;
+    fullscreen.querySelector('span')!.textContent = entering ? 'Enter fullscreen' : 'Exit fullscreen';
+  };
+  document.onfullscreenchange = updateFullscreenLabel;
+  updateFullscreenLabel();
+  fullscreen.addEventListener('click', async () => {
     try {
       if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen();
     } catch { showToast('Fullscreen is not available in this browser.'); }
@@ -627,6 +639,12 @@ function route(): void {
       return;
     }
     currentList = decoded;
+    // A class link opened inside the demo remains entirely in the demo
+    // namespace when its player returns to the game chooser.
+    if (demoNow) {
+      writeLocal('wordlist-arcade-draft', decoded.pairs.map(pair => `${pair.term} — ${pair.definition}`).join('\n'));
+      writeLocal('wordlist-arcade-title', decoded.title);
+    }
     renderGame(game);
     const gameName = games.find(item => item.id === game)?.name || 'Game';
     setRouteMeta(`${gameName} — Wordlist Arcade`, `Play ${gameName} with a vocabulary list.`);
