@@ -1,0 +1,47 @@
+{
+  "root": {
+    "status": 200,
+    "title": "Wordlist Arcade — vocabulary games for class",
+    "h1": "Make six vocabulary games",
+    "facts": [
+      "Free to use",
+      "No account",
+      "Lists stay on this device"
+    ]
+  },
+  "demo": {
+    "url": "https://wordlist-arcade.sociobot.in/?demo=1",
+    "title": "Demo — Wordlist Arcade",
+    "h1": "Match up",
+    "banner": "Demo — sample data, nothing is saved.\nReset demo\nStart for real",
+    "canonical": "https://wordlist-arcade.sociobot.in/demo",
+    "storage": [
+      "demo:wordlist-arcade-draft",
+      "demo:wordlist-arcade-title",
+      "wordlist-arcade-draft",
+      "wordlist-arcade-title"
+    ]
+  },
+  "notFound": {
+    "status": 404,
+    "title": "Page not found — Wordlist Arcade",
+    "h1": "This page was not found"
+  },
+  "/privacy/": {
+    "status": 200,
+    "title": "Privacy — Wordlist Arcade",
+    "h1": "Privacy for Wordlist Arcade",
+    "canonical": "https://wordlist-arcade.sociobot.in/privacy/"
+  },
+  "/terms/": {
+    "status": 200,
+    "title": "Terms — Wordlist Arcade",
+    "h1": "Terms for using Wordlist Arcade",
+    "canonical": "https://wordlist-arcade.sociobot.in/terms/"
+  },
+  "mobile": {
+    "overflow": 0,
+    "h1": "Make six vocabulary games"
+  },
+  "consoleErrors": []
+}

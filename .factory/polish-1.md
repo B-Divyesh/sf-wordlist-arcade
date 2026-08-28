@@ -58,5 +58,24 @@ Local visual evidence: `.factory/evidence/local/screenshot-desktop.png` and
 
 ## Live verification
 
-After the repair commit is pushed, this section is updated with the deployed
-commit, cold screenshots, and route/demo/404 checks.
+Repair commit `91818d498ec1248608658b028d1b5cdc71a0f072` was pushed and deployed
+with `/opt/fleet/lib/deploy-static.sh wordlist-arcade /work/repo/dist`
+(Azure deployment `1bfb4d84-aace-4774-a9f6-17593e888ab6`). Cold live evidence
+is in `.factory/evidence/live/`.
+
+- Root: HTTP 200, title `Wordlist Arcade — vocabulary games for class`, h1
+  `Make six vocabulary games`, exact first-screen facts, no console errors,
+  and zero mobile horizontal overflow.
+- `/?demo=1`: title `Demo — Wordlist Arcade`, a playable Match up h1,
+  persistent sandbox banner, `/demo` canonical, and sample-only demo keys.
+  A seeded real draft was byte-for-byte unchanged through demo entry and was
+  retained after Start for real, while the demo key was discarded.
+- `/not-a-real-route`: HTTP 404, `Page not found — Wordlist Arcade`, and
+  `This page was not found` h1.
+- `/privacy/` and `/terms/`: both HTTP 200 with their route-specific title,
+  h1, and canonical URL.
+- Live AxeBuilder scans of root, demo, Privacy, Terms, and 404 found zero
+  serious or critical violations. See
+  `.factory/evidence/live/live-axe-and-demo.json` and
+  `.factory/evidence/live/live-check.json`; screenshots are
+  `landing-desktop.png`, `landing-mobile.png`, and `demo-desktop.png`.

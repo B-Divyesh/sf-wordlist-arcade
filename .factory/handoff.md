@@ -40,5 +40,22 @@ Azure Static Web Apps. Its entry JS is 35.29 kB raw / 11.70 kB gzip, CSS is
 
 ## Deployment and live check
 
-The repair commit and live verification details are added after the work-order
-deployment finishes. No known product gaps are intentionally deferred.
+Repair commit `91818d498ec1248608658b028d1b5cdc71a0f072` was pushed to
+`origin/main` and deployed through the factory static work order (Azure
+deployment `1bfb4d84-aace-4774-a9f6-17593e888ab6`).
+
+Cold production checks passed at <https://wordlist-arcade.sociobot.in>:
+
+- root: HTTP 200, exact teacher-facing h1/facts, no console errors, zero
+  390px overflow;
+- `/?demo=1`: playable Match up, persistent banner, `/demo` canonical, and
+  isolated demo keys; seeded real data stayed unchanged and Start for real
+  discarded demo data;
+- `/not-a-real-route`: HTTP 404 with the designed not-found page;
+- `/privacy/` and `/terms/`: HTTP 200 with route metadata and consistent
+  shell;
+- live AxeBuilder scans of root, demo, both legal pages, and 404: zero
+  serious/critical violations.
+
+Live reports and screenshots are in `.factory/evidence/live/`. No known
+product gaps are intentionally deferred.

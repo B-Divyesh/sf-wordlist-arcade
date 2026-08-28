@@ -1,0 +1,38 @@
+{
+  "landing": {
+    "status": 200,
+    "seriousOrCritical": []
+  },
+  "demo": {
+    "status": 200,
+    "seriousOrCritical": []
+  },
+  "privacy": {
+    "status": 200,
+    "seriousOrCritical": []
+  },
+  "terms": {
+    "status": 200,
+    "seriousOrCritical": []
+  },
+  "notFound": {
+    "status": 404,
+    "seriousOrCritical": []
+  },
+  "demoIsolation": {
+    "before": {
+      "draft": "real — private",
+      "title": "Private draft"
+    },
+    "during": {
+      "draft": "real — private",
+      "title": "Private draft",
+      "demo": "photosynthesis — how plants use light to make food\nhabitat — the natural home of a plant or animal\nnocturnal — active during the night\nadaptation — a feature that helps a living thing survive\npredator — an animal that hunts other animals\ncamouflage — colors or shapes that help something hide"
+    },
+    "after": {
+      "draft": "real — private",
+      "title": "Private draft",
+      "demo": null
+    }
+  }
+}
