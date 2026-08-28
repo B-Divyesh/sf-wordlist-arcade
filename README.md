@@ -1,81 +1,63 @@
 # Wordlist Arcade
 
-Wordlist Arcade turns one pasted vocabulary list into six playable classroom
-games: Match up, Word strike, Anagram lab, Word reveal, Memory grid, and Quiz
-race. It is built for language, ESL, and primary teachers who need a quick
-activity without creating an account or running into a creation limit.
+Paste a vocabulary list. Make six classroom games.
+
+For language, ESL, and primary teachers. Make a quick activity without an
+account.
 
 Live site: <https://wordlist-arcade.sociobot.in>
 
-## What it does
+## Use it
 
-- Accepts one `word — definition` or `word — translation` pair per line.
-- Generates six games immediately from the same 3–30 pairs.
-- Encodes the complete list in a compact, versioned URL-hash class link; no list
-  is sent to a server. Long links remain copyable, and a lossless lesson-file
-  download/import and Web Share option covers LMS or email URL-length limits.
-- Supports a projector-friendly fullscreen mode and individual shared play.
-- Saves the current draft locally in the teacher's browser.
-- Works as an installable, offline-capable PWA after the first visit.
-- Includes responsive layouts, keyboard paths, reduced-motion behavior, and
-  clear invalid-list/link and offline states.
+1. Paste one word and meaning on each line.
+2. Choose Match up, Word strike, Anagram lab, Word reveal, Memory grid, or Quiz race.
+3. Play together or copy a class link.
 
-There are no accounts, ads, analytics, student records, paid features, or
-third-party runtime scripts.
+Use the sample at <https://wordlist-arcade.sociobot.in/?demo=1>. It opens a
+ready-to-play photosynthesis game. Demo data uses `demo:` local-storage keys,
+never reads real drafts, and can be reset or discarded with **Start for real**.
+
+Wordlist Arcade accepts 3 to 30 pairs. It checks each row while you type. It
+can copy a class link with the list data after `#`. The app works offline after
+the first visit. These claims are declared and tested in
+[`.factory/claims.json`](.factory/claims.json).
 
 ## Develop
 
 Requires Node.js 20 or later.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. The production build command required by
-the work order is:
+## Verify
 
 ```sh
+npm test
 npm run build
 ```
 
-The deployable static site is written to `dist/`, with `dist/index.html` at its
-root. `public/staticwebapp.config.json` supplies Azure Static Web Apps routing
-and security headers.
-
-## Test
+Run every declared claim check from a clean clone:
 
 ```sh
-npx playwright install chromium  # once per machine
-npm test                         # unit + desktop/mobile browser + axe checks
+node -e "for (const c of require('./.factory/claims.json')) console.log(c.test)"
 ```
 
-Run the suites independently with `npm run test:unit` or `npm run test:e2e`.
-The browser tests cover parsing, URL-state recovery, a maximum-size
-low-compressibility 30-pair link and lesson-file round trip in fresh browser
-contexts, all six game routes, a complete match-up round, console errors, axe
-serious/critical findings, and a 390px overflow check.
+Then run each printed command. The browser tests build the static site and use
+the isolated `/?demo=1` entry point.
 
-## Privacy and content
+The deployable static site is in `dist/`, with `dist/index.html` at its root.
+Azure Static Web Apps settings live in `public/staticwebapp.config.json`.
 
-Drafts are stored only in `localStorage`. Shared list data appears after `#` in
-the URL, which browsers do not send in HTTP requests, though anyone who receives
-the URL can read it. A downloaded `wordlist-arcade-lesson.json` file contains
-the same complete list and is only sent where a teacher chooses to share it.
-Teachers should not put student names or confidential data in lists. See
-`/privacy/` and `/terms/` for the complete plain-language notices.
+## Privacy
 
-The hero illustration was generated specifically for this product using the
-factory Azure image deployment. Its prompt, source, and provenance are in
-`assets/src/` and `.factory/design.md`.
+Real drafts use browser local storage. Demo drafts use a separate `demo:`
+namespace. Shared list data is after `#` in a class link. Do not put student
+names or confidential content in a list. Read the [privacy notice](/privacy/)
+and [terms](/terms/).
 
-## Project map
-
-- `src/main.ts` — application UI, routing, and six game engines
-- `src/core.ts` — parsing, URL compression, and game helpers
-- `src/style.css` — responsive product-specific visual system
-- `src/sw-template.js` — generated, versioned offline cache worker
-- `.factory/design.md` — visual thesis and asset provenance
-- `.factory/handoff.md` — verification results and operational notes
+The hero and social image are original generated classroom-machine artwork.
+Their source prompt and provenance are in `.factory/design.md`.
 
 Licensed under the MIT License.

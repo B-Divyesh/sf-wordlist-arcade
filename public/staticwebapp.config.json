@@ -3,6 +3,9 @@
     "rewrite": "/index.html",
     "exclude": ["/assets/*", "*.css", "*.js", "*.svg", "*.webp", "*.jpg", "*.webmanifest", "*.txt", "*.xml"]
   },
+  "responseOverrides": {
+    "404": { "rewrite": "/404.html", "statusCode": 404 }
+  },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self'; manifest-src 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'",
     "X-Content-Type-Options": "nosniff",

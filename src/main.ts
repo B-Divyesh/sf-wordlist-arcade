@@ -17,21 +17,39 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
+const BUILD_ID = '20260828-polish1';
+const DEMO_TITLE = 'Photosynthesis practice';
+const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 
 let currentList: SharedList = { title: 'My vocabulary', pairs: [] };
 let currentGame: GameId | null = null;
 let waitingWorker: ServiceWorker | null = null;
 
+function isDemo(): boolean {
+  return location.pathname === '/demo' || new URLSearchParams(location.search).get('demo') === '1';
+}
+
+function storageKey(key: string): string {
+  return isDemo() ? `demo:${key}` : key;
+}
+
 function readLocal(key: string): string {
-  try { return localStorage.getItem(key) || ''; } catch { return ''; }
+  try { return localStorage.getItem(storageKey(key)) || ''; } catch { return ''; }
 }
 
 function writeLocal(key: string, value: string): void {
-  try { localStorage.setItem(key, value); } catch { /* The game still works when browser storage is unavailable. */ }
+  try { localStorage.setItem(storageKey(key), value); } catch { /* The game still works when browser storage is unavailable. */ }
 }
 
 function removeLocal(key: string): void {
-  try { localStorage.removeItem(key); } catch { /* Nothing to clear. */ }
+  try { localStorage.removeItem(storageKey(key)); } catch { /* Nothing to clear. */ }
+}
+
+function clearDemo(): void {
+  try {
+    localStorage.removeItem('demo:wordlist-arcade-draft');
+    localStorage.removeItem('demo:wordlist-arcade-title');
+  } catch { /* Nothing to clear. */ }
 }
 
 const esc = (value: string) => value.replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char));
@@ -53,16 +71,33 @@ function icon(name: 'back' | 'share' | 'screen' | 'refresh'): string {
 
 function header(): string {
   return `<header class="site-header"><nav class="nav shell" aria-label="Main navigation">
-    <a class="brand" href="#home" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
-    <div class="nav-links"><a class="text-link" href="#make">Make a game</a><a class="text-link" href="#how">How it works</a></div>
+    <a class="brand" href="/" aria-label="Wordlist Arcade home"><span class="brand-mark" aria-hidden="true"></span><span>Wordlist Arcade</span></a>
+    <div class="nav-links"><a class="text-link" href="/demo">Demo</a><a class="text-link" href="/#make">Make a game</a><a class="text-link" href="/privacy/">Privacy</a></div>
   </nav></header>`;
 }
 
 function footer(): string {
   return `<footer class="site-footer"><div class="shell footer-inner">
-    <p><strong>Wordlist Arcade</strong> is free, account-free, and made for teachers. Your list stays in this browser and inside links you choose to share. Hero artwork was generated with AI for this project.</p>
-    <div class="footer-links"><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
+    <p><strong>Wordlist Arcade</strong> makes classroom vocabulary games. Hero artwork was generated for this project. Built by Param Factory · ${BUILD_ID}</p>
+    <div class="footer-links"><a class="text-link" href="/demo">Demo</a><a class="text-link" href="/privacy/">Privacy</a><a class="text-link" href="/terms/">Terms</a></div>
   </div></footer>`;
+}
+
+function demoBanner(): string {
+  if (!isDemo()) return '';
+  return `<aside class="demo-banner" role="status"><span><strong>Demo</strong> — sample data, nothing is saved.</span><span class="demo-actions"><button class="text-button" id="reset-demo" type="button">Reset demo</button><a class="text-button" id="start-real" href="/">Start for real</a></span></aside>`;
+}
+
+function setupDemoBanner(): void {
+  const reset = document.querySelector<HTMLButtonElement>('#reset-demo');
+  reset?.addEventListener('click', () => {
+    clearDemo();
+    currentList = DEMO_LIST;
+    writeLocal(storageKey('wordlist-arcade-draft'), EXAMPLE);
+    writeLocal(storageKey('wordlist-arcade-title'), DEMO_TITLE);
+    if (currentGame) renderGame(currentGame); else renderHome(DEMO_LIST, 'Demo reset. The sample game is ready.');
+  });
+  document.querySelector<HTMLAnchorElement>('#start-real')?.addEventListener('click', () => clearDemo());
 }
 
 function renderHome(prefill?: SharedList, notice = ''): void {
@@ -73,14 +108,16 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   const initialText = prefill ? list.pairs.map(pair => `${pair.term} — ${pair.definition}`).join('\n') : stored;
   app.innerHTML = `${header()}
     <div class="offline-banner" id="offline-banner" role="status" hidden>You’re offline. Saved lists and opened game links still work.</div>
+    ${demoBanner()}
     <main id="main">
       <section class="hero shell" id="home">
         <div class="hero-copy">
-          <p class="eyebrow">One list. Six ways to play.</p>
-          <h1>Turn this week’s words into play.</h1>
-          <p>Paste vocabulary and meanings. Start a match, memory game, anagram, word reveal, quiz race, or word strike—in seconds, with no account and no creation limit.</p>
-          <div class="hero-actions"><a class="button primary" href="#make">Make six games</a><button class="button" id="try-example" type="button">Try an example</button></div>
-          <p class="privacy-note"><span aria-hidden="true">◆</span> Private by default. Nothing is uploaded.</p>
+          <p class="eyebrow">Vocabulary games for class</p>
+          <h1>Make six vocabulary games</h1>
+          <p>For language and primary teachers who need a quick activity from this week’s words.</p>
+          <div class="hero-actions"><a class="button primary" href="#make">Paste your word pairs</a><a class="button" href="/demo">Try it with sample data</a></div>
+          <p class="action-note">Open a ready-to-play photosynthesis game.</p>
+          <ul class="plain-facts"><li>Free to use</li><li>No account</li><li>Lists stay on this device</li></ul>
         </div>
         <picture class="hero-art">
           <source media="(max-width: 700px)" srcset="/assets/word-machine-640.webp" type="image/webp" />
@@ -90,25 +127,25 @@ function renderHome(prefill?: SharedList, notice = ''): void {
       </section>
       <section class="maker-wrap" id="make"><div class="maker shell">
         <div class="editor-panel">
-          <div class="section-intro"><p class="eyebrow">Build your arcade</p><h2>Paste once. Pick a game.</h2><p>Use one pair per line. We’ll check it as you type.</p></div>
+          <div class="section-intro"><p class="eyebrow">Make vocabulary games</p><h2>Paste word pairs</h2><p>Put one word and meaning on each line. We check the list as you type.</p></div>
           <div class="field"><label for="list-title">List name <span class="label-help">Shown to students in the game room</span></label><input id="list-title" maxlength="80" value="${esc(list.title)}" autocomplete="off" /></div>
           <div class="field"><label for="wordlist">Words and meanings <span class="label-help">Example: nocturnal — active during the night</span></label><textarea id="wordlist" spellcheck="true" aria-describedby="parse-status">${esc(initialText)}</textarea></div>
-          <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load example</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
+          <div class="field-row"><div class="inline-actions"><button class="button small" id="load-example" type="button">Load sample list</button><button class="button small danger" id="clear-draft" type="button">Clear list</button></div><button class="button primary" id="copy-list" type="button" disabled>${icon('share')} Copy class link</button></div>
           <div class="status" id="parse-status" role="status" aria-live="polite">Add at least 3 pairs to unlock the games.</div>
           <section class="share-tools" aria-labelledby="share-tools-title">
-            <h3 id="share-tools-title">Share every list</h3>
-            <p>Copy the class link, or send a lesson file when an LMS or email tool has a link-length limit. Importing the file restores every pair without an account or server.</p>
+            <h3 id="share-tools-title">Share a game with your class</h3>
+            <p>Copy a class link. If your learning platform rejects a long link, download a lesson file.</p>
             <div class="inline-actions"><button class="button small" id="download-lesson" type="button" disabled>Download lesson</button><button class="button small" id="share-lesson" type="button" disabled>Share lesson</button><button class="button small" id="import-lesson" type="button">Import lesson</button><input class="sr-only" id="lesson-file" type="file" accept="application/json,.json" aria-label="Choose a Wordlist Arcade lesson file" /></div>
             <p class="share-limit" id="share-limit" hidden></p>
           </section>
-          <p class="label-help">Up to 30 pairs. Separate each word and meaning with an em dash, hyphen, colon, equals sign, vertical bar, or tab.</p>
+          <p class="label-help">Use 3 to 30 pairs. Put a dash, colon, equals sign, vertical bar, or tab between each word and meaning.</p>
         </div>
         <div class="game-shelf" aria-labelledby="shelf-title">
           <div class="shelf-heading"><h2 id="shelf-title">Your game shelf</h2><span class="count-pill" id="pair-count">0 pairs</span></div>
           <div class="game-grid">${games.map((game, index) => `<button class="game-card" type="button" data-game="${game.id}" style="--shape-color:${game.color}" disabled><span class="game-number">${index + 1}</span><strong>${game.name}</strong><span>${game.short}</span></button>`).join('')}</div>
         </div>
       </div></section>
-      <section class="how shell" id="how"><p class="eyebrow">No setup maze</p><h2>From notes to game in three moves.</h2><ol class="how-list"><li><h3>Paste your pairs</h3><p>Words, translations, definitions, facts—if they come in pairs, they can play.</p></li><li><h3>Choose a mode</h3><p>All six games are ready from the same list. Switch whenever your class needs a change.</p></li><li><h3>Project or share</h3><p>Go fullscreen together or copy the link for students. The list travels safely inside the URL.</p></li></ol></section>
+      <section class="how shell" id="how"><p class="eyebrow">How to make a game</p><h2>Make a game in three steps</h2><ol class="how-list"><li><h3>Paste word pairs</h3><p>Add words, translations, or definitions.</p></li><li><h3>Choose a game</h3><p>Pick any of six games from your list.</p></li><li><h3>Play or share</h3><p>Play together or copy a class link.</p></li></ol></section>
     </main>${footer()}<div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 
   const titleInput = get<HTMLInputElement>('#list-title');
@@ -116,7 +153,6 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   const update = () => updateMaker(titleInput.value, textArea.value);
   titleInput.addEventListener('input', update);
   textArea.addEventListener('input', update);
-  get<HTMLButtonElement>('#try-example').addEventListener('click', () => { textArea.value = EXAMPLE; update(); location.hash = 'make'; textArea.focus(); });
   get<HTMLButtonElement>('#load-example').addEventListener('click', () => { textArea.value = EXAMPLE; update(); textArea.focus(); });
   get<HTMLButtonElement>('#clear-draft').addEventListener('click', () => { textArea.value = ''; titleInput.value = 'My vocabulary'; removeLocal('wordlist-arcade-draft'); removeLocal('wordlist-arcade-title'); update(); textArea.focus(); });
   get<HTMLButtonElement>('#copy-list').addEventListener('click', () => copyLink('match'));
@@ -128,6 +164,7 @@ function renderHome(prefill?: SharedList, notice = ''): void {
   document.querySelectorAll<HTMLButtonElement>('[data-game]').forEach(button => button.addEventListener('click', () => openGame(button.dataset.game as GameId)));
   updateMaker(titleInput.value, textArea.value);
   updateOnlineStatus();
+  setupDemoBanner();
   if (waitingWorker) showUpdateToast();
   if (notice) showToast(notice);
 }
@@ -169,8 +206,13 @@ function updateOnlineStatus(online = navigator.onLine): void {
 }
 
 function gameUrl(game: GameId): string {
-  const base = `${location.origin}${location.pathname}`;
-  return `${base}#play/${game}?d=${encodeURIComponent(encodeList(currentList))}`;
+  const demoQuery = isDemo() ? '?demo=1' : '';
+  return `${location.origin}/play/${game}${demoQuery}#d=${encodeURIComponent(encodeList(currentList))}`;
+}
+
+function navigate(url: string): void {
+  history.pushState({}, '', url);
+  route();
 }
 
 async function copyLink(game: GameId): Promise<void> {
@@ -254,19 +296,19 @@ function showUpdateToast(): void {
 
 function openGame(game: GameId): void {
   if (currentList.pairs.length < 3) return;
-  location.hash = `play/${game}?d=${encodeURIComponent(encodeList(currentList))}`;
+  navigate(gameUrl(game));
 }
 
 function playChrome(game: (typeof games)[number]): string {
-  return `<div class="play-page"><header class="play-header"><nav class="play-nav shell" aria-label="Game controls">
+  return `<div class="play-page">${demoBanner()}<header class="play-header"><nav class="play-nav shell" aria-label="Game controls">
     <button class="button small" id="back-home" type="button">${icon('back')}<span>Games</span></button>
-    <div class="game-title"><span>${esc(currentList.title)}</span><h1>${game.name}</h1></div>
+    <div class="game-title"><span>${esc(currentList.title)}</span><h1 tabindex="-1">${game.name}</h1></div>
     <div class="inline-actions"><button class="button small" id="share-game" type="button" aria-label="Copy game link">${icon('share')}<span class="fullscreen-label">Share</span></button><button class="button small" id="fullscreen" type="button" aria-label="Enter fullscreen">${icon('screen')}<span class="fullscreen-label">Fullscreen</span></button></div>
-  </nav></header><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main></div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
+  </nav></header><main class="play-main shell" id="main"><div class="play-meta"><div class="progress-wrap"><div class="progress-label"><span id="progress-text">Ready</span><span id="progress-number">0%</span></div><div class="progress" aria-hidden="true"><span id="progress-bar"></span></div></div><div class="score-box" id="score">Score 0</div></div><section class="game-stage" id="game-stage" aria-live="polite"></section></main>${footer()}</div><div class="toast" id="toast" role="status" hidden></div>${updateToast()}`;
 }
 
 function setupPlayControls(game: GameId): void {
-  get<HTMLButtonElement>('#back-home').addEventListener('click', () => { location.hash = 'make'; });
+  get<HTMLButtonElement>('#back-home').addEventListener('click', () => { navigate(isDemo() ? '/demo#make' : '/#make'); });
   get<HTMLButtonElement>('#share-game').addEventListener('click', () => copyLink(game));
   get<HTMLButtonElement>('#fullscreen').addEventListener('click', async () => {
     try {
@@ -287,7 +329,7 @@ function finishGame(game: GameId, score: number, total: number, message: string)
   setMeta(total, total, score, 'Complete');
   get<HTMLElement>('#game-stage').innerHTML = `<div class="finish"><div class="finish-shape" aria-hidden="true">★</div><h2>Round complete!</h2><p>${esc(message)} Your score is ${score}.</p><div class="inline-actions"><button class="button primary" id="play-again" type="button">${icon('refresh')} Play again</button><button class="button" id="choose-game" type="button">Choose another game</button></div></div>`;
   get<HTMLButtonElement>('#play-again').addEventListener('click', () => renderGame(game));
-  get<HTMLButtonElement>('#choose-game').addEventListener('click', () => { location.hash = 'make'; });
+  get<HTMLButtonElement>('#choose-game').addEventListener('click', () => { navigate(isDemo() ? '/demo#make' : '/#make'); });
   get<HTMLButtonElement>('#play-again').focus();
 }
 
@@ -297,6 +339,7 @@ function renderGame(gameId: GameId): void {
   currentGame = gameId;
   app.innerHTML = playChrome(game);
   setupPlayControls(gameId);
+  setupDemoBanner();
   if (waitingWorker) showUpdateToast();
   if (gameId === 'match') playMatch();
   if (gameId === 'strike') playStrike();
@@ -494,26 +537,92 @@ function playRace(): void {
   draw();
 }
 
+function setRouteMeta(title: string, description: string, canonicalPath = location.pathname): void {
+  document.title = title;
+  document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', `${location.origin}${canonicalPath}`);
+  document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
+  document.querySelector('meta[property="og:description"]')?.setAttribute('content', description);
+  document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', title);
+  document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
+}
+
+function announceRoute(label: string): void {
+  const announcer = document.querySelector<HTMLElement>('#route-announcer');
+  if (announcer) announcer.textContent = label;
+  window.requestAnimationFrame(() => {
+    const heading = document.querySelector<HTMLElement>('h1');
+    if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+  });
+}
+
+function renderNotFound(): void {
+  currentGame = null;
+  app.innerHTML = `${header()}<main class="not-found shell" id="main"><p class="eyebrow">Missing game card</p><h1>This page was not found</h1><p>The address may be incomplete. Start a new vocabulary game from the home page.</p><a class="button primary" href="/">Go to Wordlist Arcade</a></main>${footer()}`;
+  setRouteMeta('Page not found — Wordlist Arcade', 'This Wordlist Arcade page was not found.');
+  announceRoute('This page was not found');
+}
+
+function restoreDemoList(): SharedList {
+  const raw = readLocal('wordlist-arcade-draft');
+  const parsed = parsePairs(raw);
+  if (parsed.pairs.length >= 3) return { title: readLocal('wordlist-arcade-title') || DEMO_TITLE, pairs: parsed.pairs };
+  writeLocal('wordlist-arcade-draft', EXAMPLE);
+  writeLocal('wordlist-arcade-title', DEMO_TITLE);
+  return DEMO_LIST;
+}
+
 function route(): void {
-  const hash = location.hash.slice(1);
-  if (hash.startsWith('play/')) {
-    const [path, query = ''] = hash.split('?');
-    const game = path.split('/')[1] as GameId;
-    const encoded = new URLSearchParams(query).get('d');
+  const path = location.pathname.replace(/\/$/, '') || '/';
+  const legacyHash = location.hash.slice(1);
+  const isLegacyGame = legacyHash.startsWith('play/');
+  const isGameRoute = path.startsWith('/play/') || isLegacyGame;
+  if (path !== '/' && path !== '/demo' && !path.startsWith('/play/') && !isLegacyGame) {
+    renderNotFound();
+    return;
+  }
+  if (isGameRoute) {
+    const legacy = isLegacyGame ? legacyHash : '';
+    const game = (path.startsWith('/play/') ? path.split('/')[2] : legacy.split('?')[0].split('/')[1]) as GameId;
+    const encoded = path.startsWith('/play/')
+      ? new URLSearchParams(location.hash.slice(1)).get('d')
+      : new URLSearchParams(legacy.split('?')[1] || '').get('d');
     const decoded = encoded ? decodeList(encoded) : null;
     if (!games.some(item => item.id === game) || !decoded) {
       renderHome(undefined, 'That game link is incomplete or damaged. Paste a list to make a new one.');
+      setRouteMeta('Wordlist Arcade — vocabulary games for class', 'Make six vocabulary games for class from one word list.');
+      announceRoute('Make six vocabulary games');
       return;
     }
     currentList = decoded;
     renderGame(game);
+    const gameName = games.find(item => item.id === game)?.name || 'Game';
+    setRouteMeta(`${gameName} — Wordlist Arcade`, `Play ${gameName} with a vocabulary list.`);
+    announceRoute(gameName);
+    return;
+  }
+  if (isDemo()) {
+    currentList = restoreDemoList();
+    if (legacyHash === 'make') {
+      renderHome(currentList);
+      setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.');
+      announceRoute('Demo: make vocabulary games');
+      window.requestAnimationFrame(() => document.querySelector('#make')?.scrollIntoView());
+      return;
+    }
+    renderGame('match');
+    setRouteMeta('Demo — Wordlist Arcade', 'Try a ready-to-play photosynthesis vocabulary game.');
+    announceRoute('Demo: Match up');
     return;
   }
   renderHome(currentList.pairs.length ? currentList : undefined);
-  if (hash === 'make' || hash === 'how') window.requestAnimationFrame(() => document.querySelector(`#${hash}`)?.scrollIntoView());
+  setRouteMeta('Wordlist Arcade — vocabulary games for class', 'Make six vocabulary games for class from one word list.');
+  announceRoute('Make six vocabulary games');
+  if (legacyHash === 'make' || legacyHash === 'how') window.requestAnimationFrame(() => document.querySelector(`#${legacyHash}`)?.scrollIntoView());
 }
 
 window.addEventListener('hashchange', route);
+window.addEventListener('popstate', route);
 window.addEventListener('online', () => updateOnlineStatus(true));
 window.addEventListener('offline', () => updateOnlineStatus(false));
 route();

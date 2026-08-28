@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-const APP_VERSION = '20260827-repair2';
+const APP_VERSION = '20260828-polish1';
 
 function pwaServiceWorker() {
   return {
@@ -23,6 +23,8 @@ function pwaServiceWorker() {
       const precache = [
         '/',
         `/?v=${APP_VERSION}`,
+        '/demo',
+        '/?demo=1',
         '/manifest.webmanifest',
         '/favicon.svg',
         '/icons/icon-192.png',

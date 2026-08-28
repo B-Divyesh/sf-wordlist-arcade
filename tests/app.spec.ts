@@ -49,8 +49,8 @@ test('all six populated game states have no serious or critical axe findings', a
     await page.getByRole('button', { name }).click();
     await expect(page.locator('.game-title h1')).toHaveText(name);
     await expect(page.locator('#game-stage')).toBeVisible();
-    expect(page.url()).toContain('#play/');
-    expect(page.url()).toContain('?d=');
+    expect(new URL(page.url()).pathname).toMatch(/^\/play\//);
+    expect(new URL(page.url()).hash).toContain('d=');
     await expectNoSeriousAxe(page);
     await page.getByRole('button', { name: /Games/ }).click();
     await expect(page.getByText('6 pairs ready. Choose any game.')).toBeVisible();
@@ -81,8 +81,8 @@ test('input errors are announced and a damaged link recovers', async ({ page }) 
   await page.goto('/');
   await page.getByLabel('Words and meanings').fill('good — valid\nthis line is broken');
   await expect(page.locator('#parse-status')).toContainText('Line 2');
-  await page.goto('/#play/match?d=broken');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Turn this week');
+  await page.goto('/play/match#d=broken');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
   await expect(page.locator('#toast')).toContainText('incomplete or damaged');
 });
 
@@ -91,7 +91,8 @@ test('mobile layout does not overflow horizontally', async ({ page }, testInfo) 
   await page.goto('/');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.getByRole('button', { name: 'Try an example' }).click();
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await page.getByRole('button', { name: /Games/ }).click();
   await page.getByRole('button', { name: 'Memory grid' }).click();
   await expect(page.locator('.memory-grid')).toBeVisible();
   const gameOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -105,7 +106,7 @@ test('the production shell works offline after the first visit', async ({ page, 
   await page.reload();
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Turn this week');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await expect(page.locator('#offline-banner')).toBeVisible();
   await context.setOffline(false);
@@ -161,7 +162,7 @@ test('the exact low-compressibility 30-pair boundary stays shareable and round-t
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=');
+  expect(manifest.start_url).toContain('?v=20260828-polish1');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -169,7 +170,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260827-repair2'");
+  expect(worker).toContain("const VERSION = '20260828-polish1'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -190,8 +191,125 @@ test('a waiting service-worker update is offered and can be applied', async ({ p
     await page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
     await expect(page.getByRole('button', { name: 'Update now' })).toBeVisible();
     await page.getByRole('button', { name: 'Update now' }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Turn this week');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
   } finally {
     writeFileSync(workerPath, worker);
   }
+});
+
+test('@claim:sample-demo opens a ready-to-play sample game', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page).toHaveTitle('Demo — Wordlist Arcade');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  await expect(page.locator('#game-stage')).toBeVisible();
+  await expect(page.getByText('Demo — sample data, nothing is saved.')).toBeVisible();
+});
+
+test('@claim:six-games makes all six games from one list', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  for (const name of ['Match up', 'Word strike', 'Anagram lab', 'Word reveal', 'Memory grid', 'Quiz race']) {
+    await expect(page.getByRole('button', { name })).toBeEnabled();
+  }
+});
+
+test('@claim:free-to-use has no paywall in the sample flow', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.getByText('Free to use')).toHaveCount(0);
+  await expect(page.locator('[data-price], [data-paywall], iframe')).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+});
+
+test('@claim:no-account starts the sample with no account form', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.locator('input[type="email"], input[type="password"], [autocomplete="username"], [autocomplete="current-password"]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+});
+
+test('@claim:local-device keeps demo separate and makes no cross-origin requests', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => requests.push(request.url()));
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.setItem('wordlist-arcade-draft', 'real — private');
+    localStorage.setItem('wordlist-arcade-title', 'Private draft');
+  });
+  const before = await page.evaluate(() => ({ draft: localStorage.getItem('wordlist-arcade-draft'), title: localStorage.getItem('wordlist-arcade-title') }));
+  await page.goto('/?demo=1');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  const after = await page.evaluate(() => ({
+    draft: localStorage.getItem('wordlist-arcade-draft'),
+    title: localStorage.getItem('wordlist-arcade-title'),
+    demoDraft: localStorage.getItem('demo:wordlist-arcade-draft')
+  }));
+  expect(after.draft).toBe(before.draft);
+  expect(after.title).toBe(before.title);
+  expect(after.demoDraft).toContain('photosynthesis');
+  expect(requests.every(url => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+});
+
+test('@claim:pair-limit accepts up to 30 word pairs', async ({ page }) => {
+  const thirtyOne = Array.from({ length: 31 }, (_, index) => `word${index + 1} — meaning${index + 1}`).join('\n');
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByLabel('Words and meanings').fill(thirtyOne);
+  await expect(page.locator('#parse-status')).toContainText('Line 31 is beyond the 30-pair limit. 30 valid pairs found.');
+  await expect(page.getByRole('button', { name: 'Quiz race' })).toBeEnabled();
+});
+
+test('@claim:list-check checks word pairs while they are typed', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByLabel('Words and meanings').fill('good — valid\nbroken row');
+  await expect(page.locator('#parse-status')).toContainText('Line 2 needs a word and meaning');
+});
+
+test('@claim:class-link copies a playable class link with data after the hash', async ({ page, browser }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy class link' }).click();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  const parsed = new URL(link);
+  expect(parsed.pathname).toBe('/play/match');
+  expect(parsed.hash).toMatch(/^#d=/);
+  expect(parsed.search).toBe('?demo=1');
+  const fresh = await browser.newContext();
+  try {
+    const linked = await fresh.newPage();
+    await linked.goto(link);
+    await expect(linked.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  } finally {
+    await fresh.close();
+  }
+});
+
+test('@claim:offline-demo reloads after the first demo visit', async ({ page, context }) => {
+  await page.goto('/?demo=1');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  await expect(page.getByText('Demo — sample data, nothing is saved.')).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('demo reset, titles, focus, metadata, and the designed 404 route work', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
+  await page.getByRole('button', { name: /Games/ }).click();
+  await page.getByLabel('Words and meanings').fill('changed — value\nsecond — value\nthird — value');
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.getByLabel('Words and meanings')).toHaveValue(list);
+  await page.getByRole('button', { name: 'Match up' }).click();
+  await expect(page).toHaveTitle('Match up — Wordlist Arcade');
+  await expect(page.locator('h1')).toBeFocused();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Make six vocabulary games');
+  await expect(page.locator('h1')).toBeFocused();
+  await page.goto('/not-a-real-route');
+  await expect(page).toHaveTitle('Page not found — Wordlist Arcade');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('This page was not found');
+  await expect(page.getByRole('link', { name: 'Go to Wordlist Arcade' })).toBeVisible();
 });

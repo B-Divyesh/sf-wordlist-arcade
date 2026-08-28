@@ -1,0 +1,65 @@
+[
+  {
+    "id": "sample-demo",
+    "claim": "Try a ready-to-play photosynthesis game",
+    "where": "landing action",
+    "test": "npm run test:claims -- --grep @claim:sample-demo",
+    "sandbox": "fresh browser context opens /?demo=1 and asserts Match up is playable"
+  },
+  {
+    "id": "six-games",
+    "claim": "Make six vocabulary games",
+    "where": "landing headline and how-to section",
+    "test": "npm run test:claims -- --grep @claim:six-games",
+    "sandbox": "fresh demo context opens the game shelf and asserts all six modes are enabled"
+  },
+  {
+    "id": "free-to-use",
+    "claim": "Free to use",
+    "where": "landing facts",
+    "test": "npm run test:claims -- --grep @claim:free-to-use",
+    "sandbox": "fresh demo context completes entry without a price, payment frame, or paywall"
+  },
+  {
+    "id": "no-account",
+    "claim": "No account",
+    "where": "landing facts",
+    "test": "npm run test:claims -- --grep @claim:no-account",
+    "sandbox": "fresh demo context reaches play without account fields"
+  },
+  {
+    "id": "local-device",
+    "claim": "Lists stay on this device",
+    "where": "landing facts and privacy notice",
+    "test": "npm run test:claims -- --grep @claim:local-device",
+    "sandbox": "seeded real storage, then demo flow; asserts real keys remain unchanged, demo keys are namespaced, and all requests are same-origin"
+  },
+  {
+    "id": "pair-limit",
+    "claim": "Use 3 to 30 pairs",
+    "where": "maker help text",
+    "test": "npm run test:claims -- --grep @claim:pair-limit",
+    "sandbox": "fresh demo context enters 31 pairs and asserts 30 are accepted with a precise limit message"
+  },
+  {
+    "id": "list-check",
+    "claim": "We check the list as you type",
+    "where": "maker introduction",
+    "test": "npm run test:claims -- --grep @claim:list-check",
+    "sandbox": "fresh demo context enters an invalid line and asserts the announced parse error"
+  },
+  {
+    "id": "class-link",
+    "claim": "Copy a class link",
+    "where": "maker share section",
+    "test": "npm run test:claims -- --grep @claim:class-link",
+    "sandbox": "fresh demo context copies a link, asserts its data stays after #, and opens it in a fresh context"
+  },
+  {
+    "id": "offline-demo",
+    "claim": "Saved lists and opened game links still work offline",
+    "where": "offline status message and README",
+    "test": "npm run test:claims -- --grep @claim:offline-demo",
+    "sandbox": "fresh demo context visits once, then context.setOffline(true) reloads the ready-to-play demo"
+  }
+]

@@ -9,14 +9,15 @@
     "preview": "vite preview",
     "test": "vitest run src && playwright test",
     "test:unit": "vitest run src",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:claims": "playwright test"
   },
   "dependencies": {
     "lz-string": "^1.5.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.58.2",
     "@types/node": "^24.3.0",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.2",

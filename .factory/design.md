@@ -103,6 +103,9 @@ are authored in HTML/CSS/SVG for crispness and accessibility.
 
 - File: `public/assets/word-machine.webp` (responsive source also exported as
   `word-machine-640.webp`).
+- Social preview: `public/assets/word-machine-social.jpg` is a 1200×630 crop
+  composed locally from the original hero image. It uses no new third-party
+  artwork and supplies Open Graph and Twitter previews.
 - Source and prompt: `assets/src/word-machine.png` and
   `assets/src/word-machine.prompt.json`.
 - Generator: Azure AI Foundry factory image deployment via
