@@ -17,7 +17,7 @@ const games: { id: GameId; name: string; short: string; color: string }[] = [
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 if (!appRoot) throw new Error('App root is missing');
 const app: HTMLDivElement = appRoot;
-const BUILD_ID = '20260828-polish5-r5';
+const BUILD_ID = '20260828-polish6-r6';
 const DEMO_TITLE = 'Photosynthesis practice';
 const DEMO_LIST: SharedList = { title: DEMO_TITLE, pairs: parsePairs(EXAMPLE).pairs };
 

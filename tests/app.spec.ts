@@ -113,7 +113,7 @@ test('legal pages and the static 404 page keep the accessible site shell', async
 test('root, demo, legal, and 404 routes share one navigation and footer skeleton', async ({ page }) => {
   const normalize = (value: string | null) => (value || '').replace(/\s+/g, '');
   const expectedHeader = 'WordlistArcadeDemoMakeagamePrivacy';
-  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish5-r5DemoPrivacyTerms';
+  const expectedFooter = 'WordlistArcademakesclassroomvocabularygames.BuiltbyParamFactory·20260828-polish6-r6DemoPrivacyTerms';
   for (const path of ['/', '/?demo=1', '/privacy/', '/terms/', '/404.html']) {
     await page.goto(path);
     expect(normalize(await page.locator('header nav[aria-label="Main navigation"]').textContent())).toBe(expectedHeader);
@@ -259,7 +259,7 @@ test('@claim:long-class-link keeps the exact 30-pair boundary copyable and resto
 test('built PWA files declare install icons, versioned startup, update control, and deployment headers', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest.start_url).toContain('?v=20260828-polish5-r5');
+  expect(manifest.start_url).toContain('?v=20260828-polish6-r6');
   expect(manifest.icons).toEqual(expect.arrayContaining([
     expect.objectContaining({ sizes: '192x192', purpose: 'any' }),
     expect.objectContaining({ sizes: '512x512', purpose: 'any' }),
@@ -267,7 +267,7 @@ test('built PWA files declare install icons, versioned startup, update control, 
   ]));
   const worker = await (await page.request.get('/sw.js')).text();
   expect(worker).toContain("event.data?.type === 'SKIP_WAITING'");
-  expect(worker).toContain("const VERSION = '20260828-polish5-r5'");
+  expect(worker).toContain("const VERSION = '20260828-polish6-r6'");
   const config = await (await page.request.get('/staticwebapp.config.json')).json();
   expect(config.globalHeaders['Content-Security-Policy']).toContain("frame-ancestors 'none'");
   expect(config.globalHeaders['X-Frame-Options']).toBe('DENY');
@@ -720,15 +720,54 @@ test('@claim:no-cookies keeps the complete demo flow free of cookies and Set-Coo
   expect(setCookieHeaders).toEqual([]);
 });
 
-test('@claim:offline-demo reloads after the first demo visit', async ({ page, context }) => {
-  await page.goto('/?demo=1');
+test('@claim:offline-demo keeps a saved list and copied game link playable after the first visit', async ({ page, context }) => {
+  const offlineTitle = 'Offline habitats';
+  const offlineList = `tundra — a cold treeless biome
+estuary — where a river meets the sea
+canopy — the highest layer of a forest`;
+
+  // Register first, then reload so the same browser profile is controlled by
+  // the worker before it saves the real draft and opens the game route.
+  await page.goto('/');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
-  await context.setOffline(true);
-  await page.reload();
+  await page.getByLabel('List name').fill(offlineTitle);
+  await page.getByLabel('Words and meanings').fill(offlineList);
+  await expect(page.getByText('3 pairs ready. Choose any game.')).toBeVisible();
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy class link' }).click();
+  const classLink = await page.evaluate(() => navigator.clipboard.readText());
+
+  // Visit both navigation requests while online. This warms the normal maker
+  // shell and the shared play route without sending the shared list to a
+  // server; its data remains in the URL fragment.
+  await page.goto(classLink);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
-  await expect(page.getByText('Demo — sample data, nothing is saved.')).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByLabel('List name')).toHaveValue(offlineTitle);
+  await expect(page.getByLabel('Words and meanings')).toHaveValue(offlineList);
+
+  const attemptedNetworkRequests: string[] = [];
+  await page.route('**/*', route => {
+    attemptedNetworkRequests.push(route.request().url());
+    return route.abort();
+  });
+  await context.setOffline(true);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Make six vocabulary games');
+  await expect(page.getByLabel('List name')).toHaveValue(offlineTitle);
+  await expect(page.getByLabel('Words and meanings')).toHaveValue(offlineList);
+  await expect(page.locator('#offline-banner')).toBeVisible();
+
+  await page.goto(classLink);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Match up');
+  await expect(page.getByText(offlineTitle)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'tundra', exact: true })).toBeVisible();
+  expect(attemptedNetworkRequests).toEqual([]);
+
   await context.setOffline(false);
+  await page.unroute('**/*');
 });
 
 test('@claim:demo-discard reset stays isolated, Back exits cleanly, and Start for real removes every demo key', async ({ page }) => {

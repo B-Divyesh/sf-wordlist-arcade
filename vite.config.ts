@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-const APP_VERSION = '20260828-polish5-r5';
+const APP_VERSION = '20260828-polish6-r6';
 
 function pwaServiceWorker() {
   return {

@@ -12,8 +12,10 @@ real paths are covered by `@claim:demo-discard`.
 
 Demo storage keys are `demo:wordlist-arcade-draft` and
 `demo:wordlist-arcade-title`. Demo mode never reads or writes the real
-`wordlist-arcade-*` keys. The service worker caches the demo shell, so the
-offline claim is verified through this entry point after its first visit.
+`wordlist-arcade-*` keys. After the first visit, the service worker keeps the
+demo, a saved real list, and a copied game link available offline. The offline
+claim warms the real maker and shared game route, disables network access, and
+checks both outcomes.
 
 A class link opened while demo mode is active is restored only into those demo
 keys. Returning to **Choose a game** keeps that shared sample list inside the

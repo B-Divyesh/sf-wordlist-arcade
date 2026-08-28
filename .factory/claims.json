@@ -165,7 +165,7 @@
     "claim": "Saved lists and opened game links still work offline",
     "where": "offline status message and README",
     "test": "npm run test:claims -- --grep @claim:offline-demo",
-    "sandbox": "fresh demo context visits once, then context.setOffline(true) reloads the ready-to-play demo"
+    "sandbox": "fresh context creates a normal three-pair draft, copies and opens its game link online, then sets offline and proves the exact saved maker list and playable copied Match up route reload with no network request"
   },
   {
     "id": "demo-discard",

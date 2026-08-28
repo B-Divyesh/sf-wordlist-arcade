@@ -1,7 +1,7 @@
-# Copy audit — 2026-08-28, polish round 5
+# Copy audit — 2026-08-28, polish round 6
 
 The cold 390px first screen, every landing label and sentence, the demo game
-toolbar, dynamic long-link state, and README were read aloud. Every
+toolbar, offline state, dynamic long-link state, and README were read aloud. Every
 visitor-facing sentence has 22 words or fewer. No sentence uses a banned
 marketing word. Each observable promise names its `.factory/claims.json`
 entry.
@@ -69,6 +69,7 @@ entry.
 | Copy link | 2 | `class-link` |
 | Enter fullscreen | 2 | `fullscreen` |
 | Exit fullscreen | 2 | `fullscreen` |
+| You’re offline. Saved lists and opened game links still work. | 10 | `offline-demo` |
 
 The dynamic long-link state adds these sentences:
 
