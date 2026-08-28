@@ -1,72 +1,60 @@
-# Wordlist Arcade — polish round 4 handoff
+# Wordlist Arcade — adversarial review 5 handoff
 
-## Released repair
+## Outcome
 
-- Repair commit: `c1d9892d0cc43775dc68eb628a1f2940487c9373`
-  (`fix: discard demo data on every exit`), pushed to `origin/main`.
-- Static deployment: `2026-08-28`, using
-  `/opt/fleet/lib/deploy-static.sh wordlist-arcade /work/repo/dist`.
-- Live URL: <https://wordlist-arcade.sociobot.in/>. The live main bundle and
-  manifest report build `20260828-polish4-r4`.
+Review 5 is complete at candidate
+`9a3696c27d189dcad8400085d93dcc29baa93dae`.
 
-## What changed
+**Verdict: FAIL.** The full report is in `.factory/review-5.md`. No product code
+was changed.
 
-- Demo storage is discarded on every exit path, including browser Back and
-  document navigation. Real draft keys remain byte-for-byte untouched.
-- `@claim:demo-discard` now enters through the visible sample action, tests
-  browser Back, then tests reset/play/Start-for-real cleanup.
-- Service-worker update detection now uses the stable waiting registration and
-  a deterministic regression fixture. The update action is still conditional;
-  it appears only after a genuine waiting worker is installed.
-- Shared static shells, PWA start URL, and build IDs now consistently use the
-  round-4 version.
-- Catalog copy is now verb-first: “Turn one pasted word-pair list into six
-  classroom vocabulary games.”
+Two findings are blocking:
 
-## Verification
+- `F-5-1 / F-04.17`: the local-device test seeds storage itself instead of
+  proving that a typed real draft is saved and restored.
+- `F-5-2 / F-04.21`: the privacy statement that URL fragments are not sent to
+  the server lacks a registered request-level assertion.
 
-From a no-local clone at `/tmp/wordlist-arcade-polish4.pcBnVe`:
+Six additional findings cover lesson-file privacy, child-data and no-grading
+claims, the README Node-version claim, two noun-only toolbar buttons, and
+unlabelled external contact links.
 
-- `npm ci` passed.
-- All 21 exact commands in `.factory/claims.json` passed: 42 desktop/mobile
-  runs.
-- `npm test` passed: 10 Vitest tests; 68 Playwright passes and two intentional
-  desktop-only mobile-layout skips.
-- `npm run build` passed and wrote `dist/`.
-- Final bundle sizes: JS 34,998 B raw / 11.66 kB gzip; CSS 15,499 B raw /
-  4.27 kB gzip; mobile hero 17,240 B.
+## Verification performed
 
-After deployment:
+- Cold production reads in fresh 390×844 and 1440×1000 Chromium contexts.
+- One-click demo, realistic sample, banner, Reset, Start for real, browser Back,
+  real/demo storage isolation, keyboard entry, reduced motion, 200% text, and
+  offline reload checks.
+- Every exact command in `.factory/claims.json` from no-local clone
+  `/tmp/wordlist-arcade-review5.zRp5IU`: 21/21 commands and 42/42 desktop/mobile
+  executions returned success.
+- `npm test` in that clone: 10 unit tests and 68 applicable browser tests
+  passed; two intended project skips.
+- `npm run build`: passed and produced `dist/`; entry JavaScript is 34,998
+  bytes raw and 11.66 kB gzip.
+- Production claim sweep: 42/42 passed.
+- Production non-claim route/accessibility sweep: 22 passed, two intended
+  desktop-only skips.
+- `/opt/fleet/lib/verify-url.sh` passed root and demo with no console errors,
+  missing alt text, or unnamed buttons.
+- Route metadata, unknown-route 404, internal/external destinations, security
+  headers, manifest MIME, and exact live/build asset hashes were checked.
+- All earlier reviews, polish reports, verification reports, and the previous
+  handoff were rechecked finding by finding.
 
-- `verify-url.sh` passed cold on root and `?demo=1`: no console errors, one
-  h1, `lang=en`, main landmark, complete image alt text, and labelled buttons.
-  Evidence is in `.factory/evidence/polish-4/live/{root,demo}/`.
-- All live claims passed: 42/42 desktop/mobile runs, including browser-Back
-  demo cleanup, offline reload, no cookies, no tracking, all six games, long
-  class links, and lesson-file restore.
-- The applicable live route/mobile/accessibility suite passed 18/18, covering
-  404/title/focus/metadata, shared shells, 44px controls, no overflow, offline,
-  and Axe scans. The Azure deployment config is intentionally not a public
-  route; its local fixture passed in the clean clone, while its live headers
-  were checked directly.
-- Root, `/demo`, Privacy, Terms, robots, sitemap, and manifest return 200.
-  An unknown URL returns HTTP 404 with the designed page and 404 `og:url`.
-- Live Lighthouse mobile: Performance 100, Accessibility 100, Best Practices
-  100, SEO 100; FCP 0.9 s, LCP 1.1 s, TBT 20 ms, CLS 0. Report:
-  `.factory/evidence/polish-4/live/lighthouse.json`.
-
-## Run locally
+## How to repeat
 
 ```sh
 npm ci
 npm test
 npm run build
+PLAYWRIGHT_BASE_URL=https://wordlist-arcade.sociobot.in npx playwright test --grep '@claim:' --workers=2
 ```
 
-Run the exact command in each `.factory/claims.json` entry to repeat the claim
-checks. Demo entry is `/?demo=1` (or `/demo`).
+Run each `test` string in `.factory/claims.json` separately from a no-local
+clone to repeat the strict claim audit.
 
-## Known gaps
+## Work left
 
-None. The product remains a static, local-first classroom game maker with no
-accounts, analytics, paid runtime service, or third-party runtime scripts.
+Implement and register the concrete fixes in `F-5-1` through `F-5-8`, then
+repeat the entire review from fresh browser contexts and a new clean clone.
