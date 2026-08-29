@@ -1,15 +1,19 @@
-# Wordlist Arcade — review 7 handoff
+# Wordlist Arcade — polish round 7 handoff
 
 ## Outcome
 
-Adversarial review 7 is complete with a **FAIL** verdict and one minor finding.
-The deployed product is clear, playable, sandboxed, and green in all claim and
-quality checks. `README.md` lines 58–59 use root-relative Privacy and Terms
-links which lead to GitHub's own policies from the rendered repository README.
+Round 7 is complete with no open findings. Repair commit
+`17a28c3ac38dc438fe6743f7a1637cd4d6a3e10d` is pushed to `main` and the static
+artifact is deployed at <https://wordlist-arcade.sociobot.in>.
 
-No product code was modified. The full review is in `.factory/review-7.md`.
+The only review-seven defect was semantic: root-relative README legal links
+sent GitHub readers to GitHub’s notices. The README now uses direct Wordlist
+Arcade Privacy and Terms URLs. A browser regression checks both exact targets.
+The rendered GitHub README was fetched after pushing and contains both
+absolute `href` values. The catalog description is also a current verb-first,
+11-word sentence.
 
-## How to verify
+## How to run and verify
 
 ```sh
 npm ci
@@ -18,39 +22,53 @@ npm run build
 node -e "for (const c of require('./.factory/claims.json')) console.log(c.test)"
 ```
 
-Run every printed claim command independently from a clean clone. For deployed
-checks, set `PLAYWRIGHT_BASE_URL=https://wordlist-arcade.sociobot.in` before a
-Playwright command.
+Run every printed claim command independently from a clean clone. For the
+deployed browser suite, set:
 
-## Verification completed
+```sh
+PLAYWRIGHT_BASE_URL=https://wordlist-arcade.sociobot.in npm run test:claims -- --grep '@claim:'
+```
 
-- Fresh no-local clone at candidate `3d8ace4`: all 26 exact claim commands
-  passed. The browser claims passed 50/50 desktop/mobile runs; Node compatibility
-  also passed.
-- Fresh-clone `npm test`: 11 unit tests and 76 browser tests passed, with two
-  intended project-specific skips.
-- Fresh-clone `npm run build`: passed and produced `dist/`; entry JavaScript is
-  11.75 kB gzip.
-- Production aggregate claims: 50/50 passed.
-- Production route/mobile/Axe regression: 22 applicable tests passed with two
-  intended skips.
-- Cold production checks passed at 390×844 and 1440×900. The first screen names
-  the job, audience, real action, sample action, and three facts.
-- The one-click sample opens a populated photosynthesis Match up game. Reset,
-  Back, and Start for real isolate and discard demo data while preserving real
-  data.
-- Root/demo verifier checks reported no console errors, one h1, `lang=en`, one
-  main landmark, complete alt text, and labelled buttons.
-- Site links, metadata, deep links, back/focus behavior, 404, security headers,
-  manifest MIME, offline saved drafts/game links, and the distinct visual
-  identity were rechecked live.
+The demo entry point is
+<https://wordlist-arcade.sociobot.in/?demo=1>. It is isolated from real drafts;
+the banner provides **Reset demo** and **Start for real**.
 
-## Known gap and next step
+## Exact verification evidence
 
-Fix F-7-1 by changing the README's `/privacy/` and `/terms/` targets to:
+- A no-local clone at `/tmp/wordlist-arcade-polish7-clean.eBHR4S` checked out
+  `17a28c3`, ran `npm ci`, and then ran every exact command in
+  `.factory/claims.json` independently. All 26 commands passed: 25 browser
+  claims passed in desktop and mobile projects (50/50); `node-compat` passed
+  its tagged assertion and Node 20.19 build. Log:
+  `claims-round7.log` in that clone.
+- The same clone passed `npm test`: 11/11 Vitest tests and 78 Playwright passes
+  with 2 intentional desktop-only skips. `npm run build` passed and produced
+  `dist/index.html`. Log: `full-round7.log` in that clone.
+- Build output: `main-BHotmWrz.js` is 35.37 kB raw / 11.75 kB gzip; CSS is
+  15.50 kB raw / 4.27 kB gzip.
+- The work-order static build was deployed with
+  `/opt/fleet/lib/deploy-static.sh wordlist-arcade /work/repo/dist`. Cold live
+  checks passed for root and demo: no console errors, correct title, `lang=en`,
+  one h1, one main, complete alt text, and labelled buttons. Reports and
+  screenshots: `evidence/polish-7/live/{root,demo}/verify.json` and
+  `screenshot-{desktop,mobile}.png`.
+- Production claims passed 50/50. The live route/mobile/Axe sweep passed 16
+  applicable checks with 2 intentional desktop-only skips. Logs:
+  `evidence/polish-7/live/claims.log` and
+  `evidence/polish-7/live/routes-axe.log`.
+- Live root Lighthouse mobile: Performance 100, Accessibility 100, Best
+  Practices 100, SEO 100; FCP 0.9 s, LCP 1.1 s, TBT 40 ms, CLS 0. Report:
+  `evidence/polish-7/live/lighthouse/root.json`.
+- Production Privacy and Terms returned 200; an unknown route returned the
+  designed 404. CSP, frame denial, nosniff, no-referrer, and permissions
+  headers are in `evidence/polish-7/live/headers-root.txt` and
+  `evidence/polish-7/live/headers-404.txt`.
+- The pushed GitHub README render includes
+  `https://wordlist-arcade.sociobot.in/privacy/` and
+  `https://wordlist-arcade.sociobot.in/terms/`; both targets returned 200.
 
-- `https://wordlist-arcade.sociobot.in/privacy/`
-- `https://wordlist-arcade.sociobot.in/terms/`
+## Known gaps and next steps
 
-Then verify the destinations from the rendered GitHub README and rerun the
-review. No other gap was found.
+None. The product remains a static, local-first, account-free classroom game
+maker. No AI feature was added because the researched scope explicitly excludes
+AI-generated content.

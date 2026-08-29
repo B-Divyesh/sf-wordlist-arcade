@@ -1,4 +1,4 @@
-# Copy audit — 2026-08-28, polish round 6
+# Copy audit — 2026-08-29, polish round 7
 
 The cold 390px first screen, every landing label and sentence, the demo game
 toolbar, offline state, dynamic long-link state, and README were read aloud. Every
@@ -102,6 +102,7 @@ The dynamic long-link state adds these sentences:
 | Demo drafts use separate browser storage. | 6 | `demo-discard` |
 | A class link contains the shared list. | 7 | `class-link` |
 | Use Node.js 20.19.x or Node.js 22.12+. | 6 | `node-compat` |
+| Read the privacy notice and terms. | 6 | direct product legal links |
 
 ## Privacy and terms additions
 
@@ -126,5 +127,6 @@ The dynamic long-link state adds these sentences:
 | playable screen | game |
 | school software | learning platform |
 
-No flags remain. Historical review quotations are retained only in review
-records and are not product copy.
+No flags remain. The README links directly to the product Privacy and Terms
+pages, and GitHub's rendered README was checked after the push. Historical
+review quotations are retained only in review records and are not product copy.

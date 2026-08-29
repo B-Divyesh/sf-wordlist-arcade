@@ -1,6 +1,7 @@
 node_modules/
 dist/
 test-results/
+evidence/
 .factory/lighthouse.json
 .factory/review/
 graphify-out/
