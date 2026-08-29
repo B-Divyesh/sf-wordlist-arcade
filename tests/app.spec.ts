@@ -92,6 +92,12 @@ test('landing page is accessible and has no console errors', async ({ page }, te
   expect(errors, `console errors in ${testInfo.project.name}`).toEqual([]);
 });
 
+test('README legal links point to Wordlist Arcade notices when rendered on GitHub', async () => {
+  const readme = readFileSync(resolve(process.cwd(), 'README.md'), 'utf8');
+  expect(readme).toContain('[privacy notice](https://wordlist-arcade.sociobot.in/privacy/)');
+  expect(readme).toContain('[terms](https://wordlist-arcade.sociobot.in/terms/)');
+});
+
 test('legal pages and the static 404 page keep the accessible site shell', async ({ page }) => {
   for (const [path, title, heading] of [
     ['/privacy/', 'Privacy — Wordlist Arcade', 'Privacy for Wordlist Arcade'],

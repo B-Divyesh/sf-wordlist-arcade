@@ -55,8 +55,8 @@ Azure Static Web Apps settings live in `public/staticwebapp.config.json`.
 
 Real drafts use browser local storage. Demo drafts use separate browser
 storage. A class link contains the shared list. Do not put student names or
-confidential content in a list. Read the [privacy notice](/privacy/) and
-[terms](/terms/).
+confidential content in a list. Read the [privacy notice](https://wordlist-arcade.sociobot.in/privacy/)
+and [terms](https://wordlist-arcade.sociobot.in/terms/).
 
 Asset sources and provenance are documented in `.factory/design.md`.
 
